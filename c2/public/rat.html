@@ -156,7 +156,7 @@
                     body: JSON.stringify({ bot_id: botId })
                 });
                 const data = await res.json();
-                if (data.status === 'rat_session_started') {
+                if (data.status === 'rat_started') {
                     document.getElementById('statusText').textContent = 'Connected';
                     startStream();
                 } else {
@@ -203,9 +203,14 @@
                             frameCount++;
                             document.getElementById('statusText').textContent = 'Streaming';
                         };
+                        img.onerror = function() {
+                            console.log('Lỗi tải ảnh');
+                        };
                         img.src = data.result;
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error('Stream error:', e);
+                }
             }, 500);
 
             setInterval(() => {

