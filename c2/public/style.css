@@ -1,0 +1,20 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    background: #0a0a0f; 
+    color: #00ff88; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 0;
+    margin: 0;
+}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: #00ff8833; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #00ff8866; }
+.btn { background: #00ff88; color: #0a0a0f; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.btn:hover { background: #00cc77; }
+.btn-danger { background: #ff0044; color: white; }
+.btn-danger:hover { background: #cc0033; }
+input, select { background: #1a1a2e; border: 1px solid #00ff8855; color: white; padding: 8px 12px; border-radius: 5px; }
+input:focus { outline: none; border-color: #00ff88; }
+a { color: #00ff88; text-decoration: none; }
+a:hover { text-decoration: underline; }

