@@ -203,7 +203,6 @@
         //  POLLING - FIXED
         // ============================================================
         function startPolling(cmdId, isScreenshot = false) {
-            // Dừng polling cũ
             if (pollingInterval) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
@@ -218,14 +217,12 @@
                     const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
                     const data = await res.json();
 
-                    // Kiểm tra nếu có kết quả (status ok hoặc error)
                     if (data.status === 'ok' || data.status === 'error') {
                         clearInterval(pollingInterval);
                         pollingInterval = null;
 
                         const el = document.getElementById('cmdResultDisplay');
 
-                        // Xử lý ảnh screenshot
                         if (isScreenshot && data.result && data.result.startsWith('data:image')) {
                             el.innerHTML = `<span class="ok">✅ Ảnh đã sẵn sàng</span>`;
                             lastScreenshotData = data.result;
@@ -235,13 +232,9 @@
                             return;
                         }
 
-                        // Xử lý kết quả text (PS, Ping, ...)
                         if (data.result !== null && data.result !== undefined) {
-                            // Hiển thị preview ngắn trên thanh kết quả
                             const preview = data.result.length > 60 ? data.result.substring(0, 60) + '...' : data.result;
                             el.innerHTML = `<span class="ok">✅ ${preview}</span>`;
-
-                            // Hiển thị đầy đủ trong modal
                             document.getElementById('resultModalTitle').textContent = '📋 Kết quả lệnh';
                             document.getElementById('resultContent').textContent = data.result;
                             openModal('resultModal');
@@ -252,13 +245,13 @@
                         return;
                     }
 
-                    // Nếu vẫn pending và hết thời gian
                     if (attempts >= maxAttempts) {
                         clearInterval(pollingInterval);
                         pollingInterval = null;
                         document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
                     }
                 } catch (e) {
+                    console.error('Polling error:', e);
                     if (attempts >= maxAttempts) {
                         clearInterval(pollingInterval);
                         pollingInterval = null;
