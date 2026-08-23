@@ -255,7 +255,7 @@
             const botX = Math.round((x / canvas.width) * botScreenWidth);
             const botY = Math.round((y / canvas.height) * botScreenHeight);
             
-            return { x: botX, y: botY, canvasX: Math.round(x), canvasY: Math.round(y) };
+            return { x: botX, y: botY };
         }
 
         function shellLog(text, type = 'info') {
@@ -305,7 +305,6 @@
                     botScreenWidth = bot.screen_width || 1920;
                     botScreenHeight = bot.screen_height || 1080;
                     document.getElementById('screenSize').textContent = `${botScreenWidth}x${botScreenHeight}`;
-                    shellLog(`Bot screen: ${botScreenWidth}x${botScreenHeight}`, 'info');
                 }
             } catch(e) {}
             
@@ -501,12 +500,17 @@
             shellLog(`Key sent: ${text.substring(0, 50)}...`, 'ok');
         }
 
-        // --- SHELL ---
+        // ============================================================
+        //  SHELL - FIXED: GỬI LỆNH VÀ POLLING KẾT QUẢ
+        // ============================================================
         async function sendShellCommand() {
             const cmd = shellInput.value.trim();
-            if (!cmd || !currentBotId) return;
+            if (!cmd || !currentBotId) {
+                shellLog('Chọn bot và nhập lệnh!', 'warn');
+                return;
+            }
             if (isShellWaiting) {
-                shellLog('Đang chờ kết quả...', 'warn');
+                shellLog('Đang chờ kết quả lệnh trước...', 'warn');
                 return;
             }
             
@@ -528,8 +532,9 @@
                     lastShellCmdId = data.cmd_id;
                     shellLog(`Đã gửi, đợi kết quả... (${data.cmd_id.slice(-6)})`, 'info');
                     
+                    // POLLING KẾT QUẢ - QUAN TRỌNG
                     let attempts = 0;
-                    const maxAttempts = 25;
+                    const maxAttempts = 30;
                     const interval = setInterval(async () => {
                         attempts++;
                         try {
@@ -548,13 +553,16 @@
                                 } else {
                                     shellLog('Không có kết quả', 'warn');
                                 }
-                            } else if (attempts >= maxAttempts) {
+                                return;
+                            }
+                            
+                            if (attempts >= maxAttempts) {
                                 clearInterval(interval);
                                 isShellWaiting = false;
                                 shellInput.disabled = false;
                                 shellSendBtn.disabled = false;
                                 shellInput.focus();
-                                shellLog('Timeout', 'error');
+                                shellLog('Hết thời gian chờ kết quả', 'error');
                             }
                         } catch(e) {
                             if (attempts >= maxAttempts) {
@@ -572,7 +580,7 @@
                     shellInput.disabled = false;
                     shellSendBtn.disabled = false;
                     shellInput.focus();
-                    shellLog(`Lỗi gửi: ${data.status}`, 'error');
+                    shellLog(`Lỗi gửi lệnh: ${data.status}`, 'error');
                 }
             } catch (e) {
                 isShellWaiting = false;
@@ -589,7 +597,9 @@
             }
         });
 
-        // --- NOTEPAD ---
+        // ============================================================
+        //  NOTEPAD
+        // ============================================================
         function openNotepadModal() { openModal('notepadModal'); }
 
         async function sendNotepad() {
@@ -614,7 +624,9 @@
             }
         }
 
-        // --- BROWSER ---
+        // ============================================================
+        //  BROWSER
+        // ============================================================
         function openBrowserModal() { openModal('browserModal'); }
 
         async function openBrowser() {
@@ -658,7 +670,9 @@
             }
         }
 
-        // --- MESSAGEBOX ---
+        // ============================================================
+        //  MESSAGEBOX - FIXED: ĐÚNG THAM SỐ
+        // ============================================================
         function openMessageBoxModal() { openModal('messageBoxModal'); }
 
         async function sendMessageBox() {
@@ -682,11 +696,11 @@
                 });
                 const data = await res.json();
                 if (data.status === 'sent' || data.status === 'queued') {
-                    shellLog(`MessageBox sent: "${message}"`, 'ok');
+                    shellLog(`MessageBox sent: "${message}" (${title})`, 'ok');
                     document.getElementById('msgContent').value = '';
                     closeModal('messageBoxModal');
                 } else {
-                    shellLog(`Lỗi: ${data.status}`, 'error');
+                    shellLog(`Lỗi gửi MessageBox: ${data.status}`, 'error');
                 }
             } catch (e) {
                 shellLog(`Lỗi: ${e.message}`, 'error');
@@ -706,7 +720,6 @@
             });
         });
 
-        // Focus shell
         document.addEventListener('click', () => {
             if (!shellInput.disabled) {
                 shellInput.focus();
